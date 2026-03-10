@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🏢 Computek Solutions - Système de Gestion de Stock
 
 Une application **professionnelle et moderne** de gestion de stock, d'inventaire, de ventes et de statistiques conçue spécifiquement pour **Computek Solutions**.
@@ -99,3 +100,6 @@ src/
 
 **Version:** 1.0.0  
 **Développé pour:** Computek Solutions
+=======
+# front_end_computek
+>>>>>>> eaad87ee6eb6bcd8d3c53f0b65e6c6c288438643
