@@ -1,0 +1,149 @@
+.sales-page {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.sales-page h2 {
+  margin-bottom: 2rem;
+  font-size: 1.75rem;
+  color: var(--dark);
+}
+
+.sales-controls {
+  background: white;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-end;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.control-group {
+  flex: 1;
+  min-width: 200px;
+}
+
+.control-group input,
+.control-group select {
+  width: 100%;
+}
+
+.summary-info {
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--dark);
+}
+
+.sales-table-container {
+  background: white;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.sales-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.sales-table th {
+  background-color: var(--light);
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--dark);
+  border-bottom: 2px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.sales-table td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.sales-table tbody tr:hover {
+  background-color: var(--light);
+}
+
+.sale-id {
+  font-family: monospace;
+  font-weight: 500;
+  color: var(--primary);
+}
+
+.item-count,
+.amount {
+  font-weight: 600;
+  color: var(--dark);
+}
+
+.discount {
+  color: var(--warning);
+  font-weight: 500;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--secondary);
+}
+
+.status-badge.pending {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+}
+
+.status-badge.cancelled {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+}
+
+@media (max-width: 1024px) {
+  .sales-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .control-group {
+    width: 100%;
+  }
+
+  .summary-info {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .sales-page {
+    padding: 1rem;
+  }
+
+  .sales-table-container {
+    overflow-x: auto;
+  }
+
+  .sales-table {
+    min-width: 700px;
+    font-size: 0.9rem;
+  }
+
+  .sales-table th,
+  .sales-table td {
+    padding: 0.75rem;
+  }
+}
