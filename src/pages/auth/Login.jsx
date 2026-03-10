@@ -53,7 +53,6 @@ export default function Login() {
               <input
                 id="email"
                 type="text"
-                value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-primary-500 transition-colors bg-white text-dark-900 placeholder-gray-500"
                 placeholder="votre@email.com ou votre_nom"
@@ -70,7 +69,6 @@ export default function Login() {
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-primary-500 transition-colors bg-white text-dark-900 placeholder-gray-500"
                   placeholder="••••••••"
