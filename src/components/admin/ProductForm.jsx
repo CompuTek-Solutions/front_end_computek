@@ -14,7 +14,7 @@ const PRODUCT_CATEGORIES = [
 ];
 
 export default function ProductForm({ product, onClose }) {
-  const { addProduct, updateProduct, inventory } = useProductStore();
+  const { addProduct, updateProduct, inventory, checkProductExists } = useProductStore();
   const [formData, setFormData] = useState(
     product ? {
       name: product.name || '',
@@ -34,6 +34,8 @@ export default function ProductForm({ product, onClose }) {
   );
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [checkingDuplicate, setCheckingDuplicate] = useState(false);
+  const [duplicateWarning, setDuplicateWarning] = useState(null);
   const [barcodeInput, setBarcodeInput] = useState('');
   const [barcodeConfirmed, setBarcodeConfirmed] = useState(!!product);
   const [barcodeMode, setBarcodeMode] = useState('manual');
@@ -129,6 +131,37 @@ export default function ProductForm({ product, onClose }) {
     if (!validation.isValid) {
       setErrors(validation.errors);
       return;
+    }
+
+    // Pour les nouveaux produits, vérifier les doublons
+    if (!product) {
+      setCheckingDuplicate(true);
+      try {
+        const duplicateCheck = await checkProductExists(formData.name, formData.barcode);
+        
+        if (duplicateCheck.exists) {
+          let message = '';
+          if (duplicateCheck.field === 'name') {
+            message = `Un produit avec le nom "${formData.name}" existe déjà!`;
+          } else if (duplicateCheck.field === 'barcode') {
+            message = `Un produit avec le code-barres "${formData.barcode}" existe déjà!`;
+          }
+          
+          setDuplicateWarning({
+            message,
+            product: duplicateCheck.product,
+            field: duplicateCheck.field
+          });
+          setCheckingDuplicate(false);
+          return;
+        }
+      } catch (error) {
+        console.error('Erreur lors de la vérification des doublons:', error);
+        toast.error('Erreur lors de la vérification des doublons');
+        setCheckingDuplicate(false);
+        return;
+      }
+      setCheckingDuplicate(false);
     }
 
     setLoading(true);
@@ -494,6 +527,100 @@ export default function ProductForm({ product, onClose }) {
             </>
           )}
 
+          {/* Duplicate Product Warning */}
+          {duplicateWarning && (
+            <div className="bg-red-50 border-2 border-red-300 rounded-lg p-6">
+              <div className="flex items-start gap-3">
+                <span className="text-3xl">⚠️</span>
+                <div className="flex-1">
+                  <h4 className="font-bold text-red-900 text-lg mb-2">Produit en double détecté!</h4>
+                  <p className="text-red-800 mb-3">{duplicateWarning.message}</p>
+                  
+                  {duplicateWarning.product && (
+                    <div className="bg-white rounded-lg p-4 border border-red-200 mb-4">
+                      <h5 className="font-semibold text-gray-900 mb-2">Produit existant:</h5>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <span className="font-medium">Nom:</span> {duplicateWarning.product.name}
+                        </div>
+                        <div>
+                          <span className="font-medium">Prix:</span> {new Intl.NumberFormat('fr-FR', {
+                            style: 'currency',
+                            currency: 'XAF',
+                          }).format(duplicateWarning.product.price_selling || duplicateWarning.product.price || 0)}
+                        </div>
+                        {duplicateWarning.product.barcode && (
+                          <div>
+                            <span className="font-medium">Code-barres:</span> {duplicateWarning.product.barcode}
+                          </div>
+                        )}
+                        {duplicateWarning.product.category && (
+                          <div>
+                            <span className="font-medium">Catégorie:</span> {duplicateWarning.product.category}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDuplicateWarning(null);
+                        // Forcer la création malgré le doublon
+                        setLoading(true);
+                        const productData = {
+                          name: formData.name,
+                          description: formData.description || null,
+                          category: formData.category || null,
+                          barcode: formData.barcode || null,
+                          price_selling: parseFloat(formData.price),
+                        };
+                        
+                        addProduct(productData)
+                          .then(async (newProduct) => {
+                            const quantity = parseInt(formData.quantity) || 0;
+                            if (quantity > 0) {
+                              const { updateInventoryQuantity } = useProductStore.getState();
+                              try {
+                                await updateInventoryQuantity({
+                                  product_id: newProduct.id,
+                                  quantity_on_hand: quantity,
+                                });
+                              } catch (err) {
+                                console.error('Erreur création inventaire:', err);
+                              }
+                            }
+                            toast.success('Produit ajouté avec succès!');
+                            onClose();
+                          })
+                          .catch((error) => {
+                            toast.error(error.response?.data?.error || 'Une erreur est survenue');
+                            console.error(error);
+                          })
+                          .finally(() => {
+                            setLoading(false);
+                          });
+                      }}
+                      disabled={loading}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {loading ? 'Ajout...' : 'Forcer l\'ajout'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDuplicateWarning(null)}
+                      className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors"
+                    >
+                      Modifier les informations
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Form Actions */}
           <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
             <button
@@ -505,13 +632,13 @@ export default function ProductForm({ product, onClose }) {
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || checkingDuplicate}
               className="px-6 py-2 bg-[#0369a1] hover:bg-[#0284c7] text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
             >
-              {loading ? (
+              {loading || checkingDuplicate ? (
                 <>
                   <span className="animate-spin">⏳</span>
-                  En cours...
+                  {checkingDuplicate ? 'Vérification...' : 'En cours...'}
                 </>
               ) : product ? (
                 'Mettre à jour'

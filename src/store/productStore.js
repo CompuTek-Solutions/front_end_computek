@@ -32,6 +32,37 @@ export const useProductStore = create((set, get) => ({
     }
   },
 
+  checkProductExists: async (name, barcode = null) => {
+    try {
+      // Vérifier par nom
+      const response = await productAPI.getAll({ search: name.trim() });
+      const existingByName = response.data.find(p => 
+        p.name.toLowerCase().trim() === name.toLowerCase().trim()
+      );
+      
+      if (existingByName) {
+        return { exists: true, product: existingByName, field: 'name' };
+      }
+      
+      // Vérifier par code-barres si fourni
+      if (barcode && barcode.trim()) {
+        try {
+          const existingByBarcode = await productAPI.getByBarcode(barcode.trim());
+          return { exists: true, product: existingByBarcode.data, field: 'barcode' };
+        } catch (error) {
+          // Si le code-barres n'est pas trouvé, c'est normal
+          if (error.response?.status !== 404) {
+            throw error;
+          }
+        }
+      }
+      
+      return { exists: false, product: null, field: null };
+    } catch (error) {
+      throw error;
+    }
+  },
+
   addProduct: async (product) => {
     set({ isLoading: true, error: null });
     try {
