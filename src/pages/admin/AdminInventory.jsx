@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 export default function AdminInventory() {
   const { products, inventory, fetchProducts, fetchInventory, updateInventoryQuantity } = useProductStore();
   const [sortBy, setSortBy] = React.useState('name');
+  const [sortOrder, setSortOrder] = React.useState('asc');
   const [filterStock, setFilterStock] = React.useState('all');
   const [draftQty, setDraftQty] = useState({});
   const [savingId, setSavingId] = useState(null);
@@ -32,19 +33,41 @@ export default function AdminInventory() {
       list = list.filter((item) => item.quantity === 0);
     }
 
-    switch (sortBy) {
-      case 'quantity':
-        list.sort((a, b) => a.quantity - b.quantity);
-        break;
-      case 'value':
-        list.sort((a, b) => (b.price * b.quantity) - (a.price * a.quantity));
-        break;
-      default:
-        list.sort((a, b) => a.name.localeCompare(b.name));
-    }
+    // Tri des produits
+    return list.sort((a, b) => {
+      let aValue, bValue;
 
-    return list;
-  }, [products, inventory, sortBy, filterStock]);
+      switch (sortBy) {
+        case 'price':
+          aValue = a.price || 0;
+          bValue = b.price || 0;
+          break;
+        case 'quantity':
+          aValue = a.quantity || 0;
+          bValue = b.quantity || 0;
+          break;
+        case 'value':
+          aValue = (a.price || 0) * (a.quantity || 0);
+          bValue = (b.price || 0) * (b.quantity || 0);
+          break;
+        case 'name':
+        default:
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+          break;
+      }
+
+      if (typeof aValue === 'string') {
+        return sortOrder === 'asc' 
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      } else {
+        return sortOrder === 'asc' 
+          ? aValue - bValue
+          : bValue - aValue;
+      }
+    });
+  }, [products, inventory, sortBy, sortOrder, filterStock]);
 
   const totalValue = useMemo(() => {
     return inventoryList.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -63,6 +86,17 @@ export default function AdminInventory() {
       return qty === 0;
     }).length;
   }, [products, inventory]);
+
+  const handleSortChange = (newSortBy) => {
+    if (sortBy === newSortBy) {
+      // Inverser l'ordre si on clique sur le même critère
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Nouveau critère, ordre ascendant par défaut
+      setSortBy(newSortBy);
+      setSortOrder('asc');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -141,32 +175,96 @@ export default function AdminInventory() {
       </div>
 
       {/* Filters and Controls */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-dark-700 mb-2">Filtrer par statut</label>
-            <select
-              value={filterStock}
-              onChange={(e) => setFilterStock(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+          {/* Stock Filter */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-sm text-dark-500">Stock:</span>
+            <button
+              onClick={() => setFilterStock('all')}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                filterStock === 'all' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
             >
-              <option value="all">Tous les produits</option>
-              <option value="low">Stock faible (&lt;10)</option>
-              <option value="out">Rupture de stock</option>
-            </select>
+              Tous
+            </button>
+            <button
+              onClick={() => setFilterStock('low')}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                filterStock === 'low' 
+                  ? 'bg-yellow-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Stock faible
+            </button>
+            <button
+              onClick={() => setFilterStock('out')}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                filterStock === 'out' 
+                  ? 'bg-red-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Rupture
+            </button>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-dark-700 mb-2">Trier par</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+          
+          {/* Sort Buttons */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-sm text-dark-500">Trier par:</span>
+            <button
+              onClick={() => handleSortChange('name')}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                sortBy === 'name' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+              title={`Trier par nom ${sortBy === 'name' && sortOrder === 'asc' ? '(Z-A)' : '(A-Z)'}`}
             >
-              <option value="name">Nom</option>
-              <option value="quantity">Quantité</option>
-              <option value="value">Valeur</option>
-            </select>
+              Nom {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
+            </button>
+            <button
+              onClick={() => handleSortChange('price')}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                sortBy === 'price' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+              title={`Trier par prix ${sortBy === 'price' && sortOrder === 'asc' ? '(élevé-bas)' : '(bas-élevé)'}`}
+            >
+              Prix {sortBy === 'price' && (sortOrder === 'asc' ? '↑' : '↓')}
+            </button>
+            <button
+              onClick={() => handleSortChange('quantity')}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                sortBy === 'quantity' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+              title={`Trier par quantité ${sortBy === 'quantity' && sortOrder === 'asc' ? '(élevée-basse)' : '(basse-élevée)'}`}
+            >
+              Quantité {sortBy === 'quantity' && (sortOrder === 'asc' ? '↑' : '↓')}
+            </button>
+            <button
+              onClick={() => handleSortChange('value')}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                sortBy === 'value' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+              title={`Trier par valeur ${sortBy === 'value' && sortOrder === 'asc' ? '(élevée-basse)' : '(basse-élevée)'}`}
+            >
+              Valeur {sortBy === 'value' && (sortOrder === 'asc' ? '↑' : '↓')}
+            </button>
+          </div>
+          
+          {/* Results Count */}
+          <div className="flex items-center space-x-2 text-dark-500 flex-shrink-0 lg:ml-auto">
+            <span>📊</span>
+            <span className="text-sm">{inventoryList.length} résultat(s)</span>
           </div>
         </div>
       </div>
@@ -211,7 +309,7 @@ export default function AdminInventory() {
                       </div>
                     </td>
                     <td className="py-3 px-3 md:px-6 text-dark-700 hidden lg:table-cell">
-                      <code className="bg-gray-100 px-2 py-1 rounded text-xs">{item.barcode}</code>
+                      <code className="bg-gray-100 px-2 py-1 rounded text-xs">{item.barcode || 'Sans code-barres'}</code>
                     </td>
                     <td className="py-3 px-3 md:px-6 text-right font-medium text-dark-900 text-sm hidden sm:table-cell">{formatCurrency(item.price)}</td>
                     <td className="py-3 px-3 md:px-6 text-center">
