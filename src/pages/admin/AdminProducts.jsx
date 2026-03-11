@@ -2,12 +2,15 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useProductStore } from '../../store/productStore';
 import ProductForm from '../../components/admin/ProductForm';
 import ProductList from '../../components/admin/ProductList';
+import Pagination from '../../components/common/Pagination';
 
 export default function AdminProducts() {
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('name'); // 'name', 'price', 'category'
   const [sortOrder, setSortOrder] = useState('asc'); // 'asc', 'desc'
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [editingProduct, setEditingProduct] = useState(null);
   const { products, fetchProducts, fetchInventory } = useProductStore();
 
@@ -55,6 +58,22 @@ export default function AdminProducts() {
     });
   }, [products, searchTerm, sortBy, sortOrder]);
 
+  // Pagination logic
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredAndSortedProducts.slice(startIndex, endIndex);
+  }, [filteredAndSortedProducts, currentPage, itemsPerPage]);
+
+  const totalPages = useMemo(() => {
+    return Math.ceil(filteredAndSortedProducts.length / itemsPerPage);
+  }, [filteredAndSortedProducts.length, itemsPerPage]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, sortBy, sortOrder, itemsPerPage]);
+
   const handleCloseForm = () => {
     setShowForm(false);
     setEditingProduct(null);
@@ -74,6 +93,15 @@ export default function AdminProducts() {
       setSortBy(newSortBy);
       setSortOrder('asc');
     }
+  };
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to first page
   };
 
   return (
@@ -162,6 +190,9 @@ export default function AdminProducts() {
           <div className="flex items-center space-x-2 text-dark-500 flex-shrink-0">
             <span>🔍</span>
             <span className="text-sm">{filteredAndSortedProducts.length} résultat(s)</span>
+            <span className="text-sm text-gray-400">
+              ({(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filteredAndSortedProducts.length)})
+            </span>
           </div>
         </div>
       </div>
@@ -169,10 +200,20 @@ export default function AdminProducts() {
       {/* Products List */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <ProductList
-          products={filteredAndSortedProducts}
+          products={paginatedProducts}
           onEdit={handleEditProduct}
         />
       </div>
+
+      {/* Pagination */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+        totalItems={filteredAndSortedProducts.length}
+        itemsPerPage={itemsPerPage}
+        onItemsPerPageChange={handleItemsPerPageChange}
+      />
     </div>
   );
 }

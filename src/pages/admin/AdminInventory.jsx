@@ -2,6 +2,7 @@ import React, { useMemo, useEffect, useState } from 'react';
 import { useProductStore } from '../../store/productStore';
 import { formatCurrency } from '../../utils/helpers';
 import BarcodeLabelsGenerator from '../../components/admin/BarcodeLabelsGenerator';
+import Pagination from '../../components/common/Pagination';
 import toast from 'react-hot-toast';
 
 export default function AdminInventory() {
@@ -9,6 +10,8 @@ export default function AdminInventory() {
   const [sortBy, setSortBy] = React.useState('name');
   const [sortOrder, setSortOrder] = React.useState('asc');
   const [filterStock, setFilterStock] = React.useState('all');
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [itemsPerPage, setItemsPerPage] = React.useState(10);
   const [draftQty, setDraftQty] = useState({});
   const [savingId, setSavingId] = useState(null);
   const [showBarcodeGenerator, setShowBarcodeGenerator] = useState(false);
@@ -69,6 +72,22 @@ export default function AdminInventory() {
     });
   }, [products, inventory, sortBy, sortOrder, filterStock]);
 
+  // Pagination logic
+  const paginatedInventoryList = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return inventoryList.slice(startIndex, endIndex);
+  }, [inventoryList, currentPage, itemsPerPage]);
+
+  const totalPages = useMemo(() => {
+    return Math.ceil(inventoryList.length / itemsPerPage);
+  }, [inventoryList.length, itemsPerPage]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStock, sortBy, sortOrder, itemsPerPage]);
+
   const totalValue = useMemo(() => {
     return inventoryList.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   }, [inventoryList]);
@@ -96,6 +115,15 @@ export default function AdminInventory() {
       setSortBy(newSortBy);
       setSortOrder('asc');
     }
+  };
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to first page
   };
 
   return (
@@ -265,6 +293,9 @@ export default function AdminInventory() {
           <div className="flex items-center space-x-2 text-dark-500 flex-shrink-0 lg:ml-auto">
             <span>📊</span>
             <span className="text-sm">{inventoryList.length} résultat(s)</span>
+            <span className="text-sm text-gray-400">
+              ({(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, inventoryList.length)})
+            </span>
           </div>
         </div>
       </div>
@@ -294,7 +325,7 @@ export default function AdminInventory() {
                   </td>
                 </tr>
               ) : (
-                inventoryList.map((item) => {
+                paginatedInventoryList.map((item) => {
                   const currentDraft = draftQty[item.id];
                   const inputValue = currentDraft === undefined ? String(item.quantity) : String(currentDraft);
                   const isSaving = savingId === item.id;
@@ -371,6 +402,16 @@ export default function AdminInventory() {
           </table>
         </div>
       </div>
+
+      {/* Pagination */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+        totalItems={inventoryList.length}
+        itemsPerPage={itemsPerPage}
+        onItemsPerPageChange={handleItemsPerPageChange}
+      />
     </div>
   );
 }
