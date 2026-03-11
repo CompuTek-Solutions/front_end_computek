@@ -253,7 +253,7 @@ Affiche vos performances personnelles:
 
 1. **Taux de Performance** - % d'accomplissement vs objectif
 2. **Classement** - Votre position parmi les vendeurs
-3. **Objectif Mensuel** - Progression vs cible (500,000 XOF)
+3. **Objectif Mensuel** - Progression vs cible (500,000 XAF)
 4. **Top 5 Produits** - Vos produits les plus vendus
 5. **Statistiques Mensuelles** - Résumé des KPIs
 

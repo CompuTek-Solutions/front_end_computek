@@ -21,7 +21,7 @@ export default function SaleCart({ items, onUpdateQuantity, getMaxQuantity }) {
                 <p className="item-price">
                   {new Intl.NumberFormat('fr-FR', {
                     style: 'currency',
-                    currency: 'XOF',
+                    currency: 'XAF',
                   }).format(item.price)}
                 </p>
               </div>
@@ -50,7 +50,7 @@ export default function SaleCart({ items, onUpdateQuantity, getMaxQuantity }) {
               <div className="item-total">
                 {new Intl.NumberFormat('fr-FR', {
                   style: 'currency',
-                  currency: 'XOF',
+                  currency: 'XAF',
                 }).format(item.total)}
               </div>
             </div>
@@ -65,7 +65,7 @@ export default function SaleCart({ items, onUpdateQuantity, getMaxQuantity }) {
           <span>
             {new Intl.NumberFormat('fr-FR', {
               style: 'currency',
-              currency: 'XOF',
+              currency: 'XAF',
             }).format(subtotal)}
           </span>
         </div>
@@ -74,7 +74,7 @@ export default function SaleCart({ items, onUpdateQuantity, getMaxQuantity }) {
           <span>
             {new Intl.NumberFormat('fr-FR', {
               style: 'currency',
-              currency: 'XOF',
+              currency: 'XAF',
             }).format(subtotal)}
           </span>
         </div>

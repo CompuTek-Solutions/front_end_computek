@@ -43,7 +43,7 @@ export default function AdminSettings() {
             <div>
               <label className="block text-sm font-semibold text-dark-900 mb-2">Devise</label>
               <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
-                <option>XOF (Franc CFA)</option>
+                <option>XAF (Franc CFA)</option>
                 <option>EUR (Euro)</option>
                 <option>USD (Dollar)</option>
               </select>
