@@ -70,7 +70,7 @@ export default function ProductList({ products, onEdit }) {
                 </td>
                 <td className="py-3 px-3 md:px-6 hidden lg:table-cell">
                   <code className="text-xs bg-gray-100 px-2 py-1 rounded font-mono">
-                    {product.barcode}
+                    {product.barcode || 'Sans code-barres'}
                   </code>
                 </td>
                 <td className="py-3 px-3 md:px-6">

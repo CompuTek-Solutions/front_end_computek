@@ -16,22 +16,29 @@ const PRODUCT_CATEGORIES = [
 export default function ProductForm({ product, onClose }) {
   const { addProduct, updateProduct, inventory } = useProductStore();
   const [formData, setFormData] = useState(
-    product || {
+    product ? {
+      name: product.name || '',
+      description: product.description || '',
+      price: String(product.price_selling || product.price || ''),
+      category: product.category || '',
+      barcode: product.barcode || '',
+      quantity: '',
+    } : {
       name: '',
       description: '',
-      price: '1000',
+      price: '',
       category: '',
       barcode: '',
-      quantity: '0',
+      quantity: '',
     }
   );
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [barcodeInput, setBarcodeInput] = useState('');
-  const [barcodeConfirmed, setBarcodeConfirmed] = useState(!!product || !!formData.barcode);
+  const [barcodeConfirmed, setBarcodeConfirmed] = useState(!!product);
   const [barcodeMode, setBarcodeMode] = useState('manual');
   const [showCameraScanner, setShowCameraScanner] = useState(false);
-  const [hasBarcode, setHasBarcode] = useState(product ? true : null);
+  const [hasBarcode, setHasBarcode] = useState(product ? (product.barcode ? true : false) : null);
   const initialIsCustom = product?.category
     ? !PRODUCT_CATEGORIES.includes(product.category)
     : false;
@@ -314,6 +321,24 @@ export default function ProductForm({ product, onClose }) {
               onDetected={handleCameraScan}
               onClose={() => { setShowCameraScanner(false); setBarcodeMode('manual'); }}
             />
+          )}
+
+          {/* Badge : Sans code-barres */}
+          {barcodeConfirmed && product && !product.barcode && (
+            <div className="bg-orange-50 border border-orange-300 rounded-lg p-4 flex items-center gap-3">
+              <span className="text-2xl">🏷️</span>
+              <div>
+                <p className="font-semibold text-orange-900">Sans code-barres</p>
+                <p className="text-sm text-orange-700">Ce produit est enregistré sans code-barres</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setHasBarcode(true); setBarcodeConfirmed(false); }}
+                className="ml-auto text-sm px-3 py-1 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded transition-colors"
+              >
+                Ajouter un code-barres
+              </button>
+            </div>
           )}
 
           {/* Badge : Sans code-barres */}
