@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import './BarcodeScanner.css';
 
 export default function BarcodeScanner({ onDetected, onClose }) {
@@ -13,12 +13,17 @@ export default function BarcodeScanner({ onDetected, onClose }) {
       'qr-reader',
       {
         fps: 10,
-        qrdecoder: {
-          wiltonBarcodeReader: {
-            enabled: true,
-          },
-        },
         rememberLastUsedCamera: true,
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.CODE_93,
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.ITF,
+        ],
       },
       false
     );
@@ -41,7 +46,7 @@ export default function BarcodeScanner({ onDetected, onClose }) {
         onDetected(decodedText);
       },
       (errorMessage) => {
-        // Ignore errors
+        console.debug('Scanner error:', errorMessage);
       }
     );
 
