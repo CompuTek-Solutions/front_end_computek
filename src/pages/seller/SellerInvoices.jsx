@@ -15,6 +15,9 @@ const paymentLabels = {
 export default function SellerInvoices() {
   const { sales, fetchSales } = useProductStore();
   const [search, setSearch] = useState('');
+  const [filterPayment, setFilterPayment] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   useEffect(() => {
     fetchSales().catch(() => {});
@@ -22,13 +25,21 @@ export default function SellerInvoices() {
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return sales.filter(
-      (s) =>
+    const fromDate = dateFrom ? new Date(dateFrom) : null;
+    const toDate = dateTo ? new Date(`${dateTo}T23:59:59`) : null;
+
+    return sales.filter((s) => {
+      const matchPayment = filterPayment === 'all' || (s.payment_method ?? s.paymentMethod) === filterPayment;
+      const createdAt = s.created_at ? new Date(s.created_at) : null;
+      const matchDateFrom = !fromDate || (createdAt && createdAt >= fromDate);
+      const matchDateTo = !toDate || (createdAt && createdAt <= toDate);
+      const matchSearch =
         !search ||
         (s.invoice_number || '').toLowerCase().includes(q) ||
-        (s.client_name || '').toLowerCase().includes(q)
-    );
-  }, [sales, search]);
+        (s.client_name || '').toLowerCase().includes(q);
+      return matchPayment && matchDateFrom && matchDateTo && matchSearch;
+    });
+  }, [sales, search, filterPayment, dateFrom, dateTo]);
 
   const totalAmount = useMemo(
     () => filtered.reduce((sum, s) => sum + parseFloat(s.total_amount ?? s.total ?? 0), 0),
@@ -64,7 +75,7 @@ export default function SellerInvoices() {
       </div>
 
       {/* Cartes de synthèse */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -100,15 +111,32 @@ export default function SellerInvoices() {
             </div>
           </div>
         </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div>
+            <p className="text-sm font-medium text-dark-600 mb-3">Filtres actifs</p>
+            <div className="space-y-2 text-sm text-dark-700">
+              <p>
+                Paiement :{' '}
+                <span className="font-semibold">
+                  {filterPayment === 'all' ? 'Tous' : paymentLabels[filterPayment] || filterPayment}
+                </span>
+              </p>
+              <p>
+                Période :{' '}
+                <span className="font-semibold">
+                  {dateFrom ? `du ${dateFrom}` : '—'} {dateTo ? `au ${dateTo}` : ''}
+                </span>
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Barre de recherche */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="flex flex-col md:flex-row gap-4 items-end">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-dark-700 mb-2">
-              Rechercher
-            </label>
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="flex flex-col">
+            <label className="block text-sm font-medium text-dark-700 mb-2">Rechercher</label>
             <input
               type="text"
               placeholder="N° facture ou nom client..."
@@ -117,7 +145,37 @@ export default function SellerInvoices() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-dark-900"
             />
           </div>
-          <div className="bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg px-5 py-3 whitespace-nowrap">
+          <div>
+            <label className="block text-sm font-medium text-dark-700 mb-2">Mode de paiement</label>
+            <select
+              value={filterPayment}
+              onChange={(e) => setFilterPayment(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-dark-900"
+            >
+              <option value="all">Tous</option>
+              <option value="cash">Espèces</option>
+              <option value="paiement_marchand">Paiement marchand</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-dark-700 mb-2">Du</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-dark-900"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-dark-700 mb-2">Au</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-dark-900"
+            />
+          </div>
+          <div className="bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg px-5 py-3 whitespace-nowrap flex flex-col justify-center">
             <p className="text-xs text-dark-600">Total filtré</p>
             <p className="text-lg font-bold text-primary-600">{formatCurrency(totalAmount)}</p>
           </div>

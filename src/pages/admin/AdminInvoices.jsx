@@ -13,26 +13,39 @@ const paymentLabels = {
 };
 
 export default function AdminInvoices() {
-  const { sales, fetchSales } = useProductStore();
+  const { sales, fetchSales, deleteSale } = useProductStore();
   const [search, setSearch] = useState('');
   const [filterPayment, setFilterPayment] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     fetchSales().catch(() => {});
   }, [fetchSales]);
 
   const filtered = useMemo(() => {
+    const fromDate = dateFrom ? new Date(dateFrom) : null;
+    const toDate = dateTo ? new Date(`${dateTo}T23:59:59`) : null;
+
     return sales.filter((s) => {
-      const matchPayment = filterPayment === 'all' || s.payment_method === filterPayment;
+      const paymentValue = s.payment_method ?? s.paymentMethod;
+      const createdAt = s.created_at ? new Date(s.created_at) : null;
+
+      const matchPayment = filterPayment === 'all' || paymentValue === filterPayment;
+      const matchDateFrom = !fromDate || (createdAt && createdAt >= fromDate);
+      const matchDateTo = !toDate || (createdAt && createdAt <= toDate);
+
       const q = search.toLowerCase();
       const matchSearch =
         !search ||
         (s.invoice_number || '').toLowerCase().includes(q) ||
         (s.seller_name || '').toLowerCase().includes(q) ||
         (s.client_name || '').toLowerCase().includes(q);
-      return matchPayment && matchSearch;
+
+      return matchPayment && matchDateFrom && matchDateTo && matchSearch;
     });
-  }, [sales, search, filterPayment]);
+  }, [sales, search, filterPayment, dateFrom, dateTo]);
 
   const totalAmount = useMemo(
     () => filtered.reduce((sum, s) => sum + parseFloat(s.total_amount ?? s.total ?? 0), 0),
@@ -46,6 +59,23 @@ export default function AdminInvoices() {
       printInvoice(payload);
     } catch {
       toast.error('Impossible de charger les détails de la facture');
+    }
+  };
+
+  const handleDelete = async (saleId) => {
+    const sale = sales.find((s) => s.id === saleId);
+    const label = sale?.invoice_number || saleId;
+    if (!window.confirm(`Supprimer définitivement la facture ${label} ?`)) return;
+
+    try {
+      setDeletingId(saleId);
+      await deleteSale(saleId);
+      toast.success('Facture supprimée');
+    } catch (err) {
+      const msg = err.response?.data?.error || 'Suppression impossible';
+      toast.error(msg);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -69,14 +99,14 @@ export default function AdminInvoices() {
 
       {/* Filtres */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div>
             <label className="block text-sm font-medium text-dark-700 mb-2">
               Rechercher
             </label>
             <input
               type="text"
-              placeholder="N° facture, vendeur, client..."
+              placeholder="N° facture, vendeur ou client..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-dark-900"
@@ -93,17 +123,55 @@ export default function AdminInvoices() {
             >
               <option value="all">Tous</option>
               <option value="cash">Espèces</option>
-              {/* <option value="card">Carte bancaire</option>
-              <option value="transfer">Virement</option>
-              <option value="check">Chèque</option> */}
               <option value="paiement_marchand">Paiement marchand</option>
             </select>
           </div>
+          <div>
+            <label className="block text-sm font-medium text-dark-700 mb-2">Du</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-dark-900"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-dark-700 mb-2">Au</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-dark-900"
+            />
+          </div>
           <div className="flex items-end">
-            <div className="bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg p-4 w-full">
-              <p className="text-xs text-dark-600 mb-1">Total ({filtered.length} facture{filtered.length !== 1 ? 's' : ''})</p>
-              <p className="text-lg font-bold text-primary-600">{formatCurrency(totalAmount)}</p>
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setFilterPayment('all');
+                setDateFrom('');
+                setDateTo('');
+              }}
+              className="w-full px-4 py-2 border border-primary-200 text-primary-700 rounded-lg font-medium hover:bg-primary-50 transition"
+            >
+              Réinitialiser
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+          <div className="bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg p-4">
+            <p className="text-xs text-dark-600 mb-1">Total ({filtered.length} facture{filtered.length !== 1 ? 's' : ''})</p>
+            <p className="text-lg font-bold text-primary-600">{formatCurrency(totalAmount)}</p>
+          </div>
+          <div className="rounded-lg p-4 border border-gray-200 text-sm text-dark-700">
+            <p>Filtre paiement : <span className="font-semibold">{filterPayment === 'all' ? 'Tous' : paymentLabels[filterPayment] || filterPayment}</span></p>
+            <p>Période : <span className="font-semibold">{dateFrom ? `du ${dateFrom}` : '—'} {dateTo ? `au ${dateTo}` : ''}</span></p>
+          </div>
+          <div className="rounded-lg p-4 border border-gray-200 text-sm text-dark-700">
+            <p>Résultats filtrés : <span className="font-semibold">{filtered.length}</span></p>
+            <p>Total filtré : <span className="font-semibold">{formatCurrency(totalAmount)}</span></p>
           </div>
         </div>
       </div>
@@ -161,13 +229,21 @@ export default function AdminInvoices() {
                         {paymentLabels[sale.payment_method] || sale.payment_method || '—'}
                       </span>
                     </td>
-                    <td className="py-3 px-3 md:px-6 text-center">
+                    <td className="py-3 px-3 md:px-6 text-center space-x-2">
                       <button
                         type="button"
                         onClick={() => handlePrint(sale.id)}
-                        className="px-2 md:px-3 py-1.5 bg-[#0369a1] hover:bg-[#0284c7] text-white text-xs md:text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                        className="px-2 md:px-3 py-1.5 bg-[#0369a1] hover:bg-[#0284c7] text-white text-xs md:text-sm font-medium rounded-lg whitespace-nowrap"
                       >
                         🖨️ <span className="hidden sm:inline">Imprimer</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(sale.id)}
+                        disabled={deletingId === sale.id}
+                        className="px-2 md:px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 text-xs md:text-sm font-medium rounded-lg whitespace-nowrap disabled:opacity-60"
+                      >
+                        {deletingId === sale.id ? 'Suppression...' : 'Supprimer'}
                       </button>
                     </td>
                   </tr>

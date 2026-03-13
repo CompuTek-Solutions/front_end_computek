@@ -23,6 +23,21 @@ export const useProductStore = create((set, get) => ({
     }
   },
 
+  deleteSale: async (id) => {
+    set({ isLoading: true, error: null });
+    try {
+      await salesAPI.delete(id);
+      set({
+        sales: get().sales.filter((sale) => sale.id !== id),
+        isLoading: false,
+      });
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Erreur lors de la suppression de la facture';
+      set({ error: errorMsg, isLoading: false });
+      throw error;
+    }
+  },
+
   getProductByBarcode: async (barcode) => {
     try {
       const response = await productAPI.getByBarcode(barcode);
