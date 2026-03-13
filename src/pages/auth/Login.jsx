@@ -39,8 +39,12 @@ export default function Login() {
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           {/* Logo */}
           <div className="text-center mb-8">
-            <img src="/logo.jpg" alt="CompuTek Solutions" className="w-20 h-20 rounded-full mx-auto mb-4 object-cover shadow-lg" />
-            <h1 className="text-4xl font-bold text-dark-900 mb-1">CompuTek Solutions</h1>
+            <div className="relative w-24 h-24 mx-auto mb-4">
+              <div className="relative w-full h-full border border-white/60 overflow-hidden bg-white/95 backdrop-blur">
+                <img src="/logo.jpg" alt="CompuTek Solutions" className="w-full h-full object-contain p-2" />
+              </div>
+            </div>
+            {/* <h1 className="text-4xl font-bold text-dark-900 mb-1">CompuTek Solutions</h1> */}
           </div>
 
           {/* Form */}

@@ -45,12 +45,8 @@ export default function Sidebar({ role, isOpen, onClose }) {
       {/* Logo + Close button on mobile */}
       <div className="flex-shrink-0 p-4 border-b border-gray-100 bg-gradient-to-r from-primary-50 to-transparent">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3 min-w-0">
-            <img src="/logo.jpg" alt="CompuTek Solutions" className="w-10 h-10 rounded-lg object-cover shadow-md flex-shrink-0" />
-            <div className="min-w-0">
-              <h2 className="font-bold text-dark-900 truncate">CompuTek</h2>
-              <p className="text-xs text-dark-500">Solutions</p>
-            </div>
+          <div className="flex items-center min-w-0">
+            <span className="text-lg font-semibold text-dark-900">Navigation</span>
           </div>
           <button
             onClick={onClose}

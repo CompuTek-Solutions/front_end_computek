@@ -20,6 +20,7 @@ export default function SellerNewSale() {
   const [posBarcode, setPosBarcode] = useState('');
   const [showProductPanel, setShowProductPanel] = useState(false);
   const [productPage, setProductPage] = useState(0);
+  const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
   const barcodeFieldRef = useRef(null);
 
   const PRODUCTS_PER_PAGE = 18;
@@ -151,6 +152,7 @@ export default function SellerNewSale() {
       client_id: selectedClientId || null,
     };
 
+    setIsGeneratingInvoice(true);
     try {
       await addSale(sale);
       fetchInventory().catch(() => {});
@@ -164,6 +166,8 @@ export default function SellerNewSale() {
     } catch (err) {
       toast.error(err.response?.data?.error || 'Erreur lors de l\'enregistrement de la vente');
       return;
+    } finally {
+      setIsGeneratingInvoice(false);
     }
     setCartItems([]);
     setDiscount(0);
@@ -520,31 +524,68 @@ export default function SellerNewSale() {
             {/* Client */}
             <div>
               <label className="block text-xs font-semibold text-dark-700 mb-1 uppercase tracking-wide">Client (optionnel)</label>
-              <select
-                value={selectedClientId}
-                onChange={(e) => setSelectedClientId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-dark-900 text-sm"
-              >
-                <option value="">Sans client</option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}{c.phone ? ` – ${c.phone}` : ''}</option>
-                ))}
-              </select>
-              {!showNewClient ? (
-                <button type="button" onClick={() => setShowNewClient(true)} className="text-xs text-primary-600 hover:text-primary-700 font-medium mt-1">
-                  + Nouveau client
-                </button>
-              ) : (
-                <form onSubmit={handleAddClient} className="space-y-2 mt-2 pt-2 border-t border-gray-200">
-                  <input type="text" placeholder="Nom *" value={newClient.name} onChange={(e) => setNewClient((p) => ({ ...p, name: e.target.value }))} className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-dark-900 bg-white text-sm" required />
-                  <input type="email" placeholder="Email" value={newClient.email} onChange={(e) => setNewClient((p) => ({ ...p, email: e.target.value }))} className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-dark-900 bg-white text-sm" />
-                  <input type="tel" placeholder="Téléphone" value={newClient.phone} onChange={(e) => setNewClient((p) => ({ ...p, phone: e.target.value }))} className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-dark-900 bg-white text-sm" />
-                  <div className="flex gap-2">
-                    <button type="submit" className="flex-1 py-1.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700">Enregistrer</button>
-                    <button type="button" onClick={() => { setShowNewClient(false); setNewClient({ name: '', email: '', phone: '', address: '' }); }} className="flex-1 py-1.5 border border-gray-300 text-dark-700 rounded-lg text-sm hover:bg-gray-50">Annuler</button>
-                  </div>
-                </form>
-              )}
+              <div className="space-y-2">
+                <select
+                  value={selectedClientId}
+                  onChange={(e) => setSelectedClientId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-dark-900 text-sm"
+                >
+                  <option value="">Sans client</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}{c.phone ? ` – ${c.phone}` : ''}</option>
+                  ))}
+                </select>
+                {!showNewClient ? (
+                  <button 
+                    type="button" 
+                    onClick={() => setShowNewClient(true)} 
+                    className="w-full py-2 px-3 bg-[#0369a1] hover:bg-[#0284c7] text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                  >
+                    <span>➕</span>
+                    <span>Ajouter un nouveau client</span>
+                  </button>
+                ) : (
+                  <form onSubmit={handleAddClient} className="space-y-2 mt-2 pt-2 border-t border-gray-200">
+                    <input 
+                      type="text" 
+                      placeholder="Nom *" 
+                      value={newClient.name} 
+                      onChange={(e) => setNewClient((p) => ({ ...p, name: e.target.value }))} 
+                      className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-dark-900 bg-white text-sm" 
+                      required 
+                    />
+                    <input 
+                      type="email" 
+                      placeholder="Email" 
+                      value={newClient.email} 
+                      onChange={(e) => setNewClient((p) => ({ ...p, email: e.target.value }))} 
+                      className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-dark-900 bg-white text-sm" 
+                    />
+                    <input 
+                      type="tel" 
+                      placeholder="Téléphone" 
+                      value={newClient.phone} 
+                      onChange={(e) => setNewClient((p) => ({ ...p, phone: e.target.value }))} 
+                      className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-dark-900 bg-white text-sm" 
+                    />
+                    <div className="flex gap-2">
+                      <button 
+                        type="submit" 
+                        className="flex-1 py-1.5 bg-[#047857] hover:bg-[#059669] text-white rounded-lg text-sm font-medium transition-colors"
+                      >
+                        Enregistrer
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => { setShowNewClient(false); setNewClient({ name: '', email: '', phone: '', address: '' }); }} 
+                        className="flex-1 py-1.5 border border-gray-300 text-dark-700 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
             </div>
 
             {/* Notes */}
@@ -581,11 +622,20 @@ export default function SellerNewSale() {
 
             <button
               onClick={async () => { await handleCompleteSale(); focusBarcodeField(); }}
-              disabled={cartItems.length === 0}
+              disabled={cartItems.length === 0 || isGeneratingInvoice}
               className="w-full bg-[#047857] hover:bg-[#059669] disabled:bg-gray-400 text-white font-bold py-4 rounded-xl transition-all disabled:cursor-not-allowed flex items-center justify-center gap-2 text-base shadow-md"
             >
-              <span>✅</span>
-              <span>Valider la vente</span>
+              {isGeneratingInvoice ? (
+                <>
+                  <span className="animate-spin">⏳</span>
+                  <span>Génération de la facture...</span>
+                </>
+              ) : (
+                <>
+                  <span>✅</span>
+                  <span>Valider la vente</span>
+                </>
+              )}
             </button>
 
             {cartItems.length > 0 && (

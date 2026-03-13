@@ -62,6 +62,9 @@ export const generateInvoiceNumber = () => {
  * Ouvre une fenêtre d'impression pour la facture (vente).
  * @param {Object} sale - { id, total_amount|total, discount_amount|discount, payment_method, created_at|date, items: [{ name, product_name, quantity, unit_price, price, subtotal, total }] }
  */
+
+
+
 export const printInvoice = (sale) => {
   const total = sale.total_amount ?? sale.total ?? 0;
   const discount = sale.discount_amount ?? sale.discount ?? 0;

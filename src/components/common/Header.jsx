@@ -23,7 +23,11 @@ export default function Header({ title, onToggleSidebar }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <img src="/logo.jpg" alt="CompuTek Solutions" className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg object-cover shadow-md flex-shrink-0" />
+          <div className="relative w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0">
+            <div className="relative w-full h-full border border-white/60 overflow-hidden bg-white/95 backdrop-blur ">
+              <img src="/logo.jpg" alt="CompuTek Solutions" className="w-full h-full" />
+            </div>
+          </div>
           <div className="min-w-0">
             <h1 className="text-base sm:text-xl md:text-2xl font-bold text-dark-900 truncate">{title || 'CompuTek Solutions'}</h1>
             <p className="text-xs sm:text-sm text-dark-500 hidden sm:block">Gestion Commerciale</p>

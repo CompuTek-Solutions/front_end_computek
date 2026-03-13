@@ -93,9 +93,9 @@ export default function AdminInvoices() {
             >
               <option value="all">Tous</option>
               <option value="cash">Espèces</option>
-              <option value="card">Carte bancaire</option>
+              {/* <option value="card">Carte bancaire</option>
               <option value="transfer">Virement</option>
-              <option value="check">Chèque</option>
+              <option value="check">Chèque</option> */}
               <option value="paiement_marchand">Paiement marchand</option>
             </select>
           </div>
