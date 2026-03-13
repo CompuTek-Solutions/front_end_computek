@@ -236,6 +236,7 @@ export const printInvoice = (sale) => {
       </thead>
       <tbody>${rows}</tbody>
     </table>
+    <p style="margin:6px 0 0;font-size:12px;font-weight:600;color:#0f172a;">Garantie 7jrs</p>
 
     <table class="totals-table">
       <tr>

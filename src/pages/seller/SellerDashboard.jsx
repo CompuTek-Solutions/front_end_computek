@@ -1,18 +1,47 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProductStore } from '../../store/productStore';
 import { useAuthStore } from '../../store/authStore';
-import { calculateStats } from '../../utils/helpers';
 import { formatCurrency } from '../../utils/helpers';
 
 export default function SellerDashboard() {
-  const { sales } = useProductStore();
+  const { sellerStats, fetchSellerStats } = useProductStore();
   const { user } = useAuthStore();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (user?.id) {
+      fetchSellerStats(user.id).catch(() => {});
+    }
+  }, [user?.id, fetchSellerStats]);
+
   const stats = useMemo(() => {
-    return calculateStats(sales);
-  }, [sales]);
+    return (
+      sellerStats?.summary ?? {
+        totalRevenue: 0,
+        totalOrders: 0,
+        totalQuantity: 0,
+        averageOrder: 0,
+      }
+    );
+  }, [sellerStats]);
+
+  const topProducts = sellerStats?.topProducts ?? [];
+  const monthlySales = sellerStats?.monthlySales ?? [];
+
+  const topProductsDisplay = useMemo(() => topProducts.slice(0, 5), [topProducts]);
+  const monthlyOverview = useMemo(() => {
+    return monthlySales.map((entry) => {
+      const label = entry.month
+        ? new Date(entry.month).toLocaleString('fr-FR', { month: 'short', year: 'numeric' })
+        : '—';
+      return {
+        label,
+        revenue: entry.total_revenue ?? entry.totalRevenue ?? 0,
+        salesCount: entry.sales_count ?? entry.salesCount ?? 0,
+      };
+    });
+  }, [monthlySales]);
 
   const commissionRate = 0; // Commission removed
   const totalCommissions = 0;
@@ -142,6 +171,58 @@ export default function SellerDashboard() {
               <span>📜</span>
               <span className="font-medium">Historique</span>
             </button>
+          </div>
+        </div>
+
+        {/* Insights */}
+        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-dark-900">Top produits</h3>
+              <span className="text-2xl">🏅</span>
+            </div>
+            {topProductsDisplay.length > 0 ? (
+              <div className="space-y-3">
+                {topProductsDisplay.map((product, index) => (
+                  <div key={product.productId || index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
+                        <span className="text-primary-700 font-semibold text-sm">#{index + 1}</span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-dark-900">{product.name}</p>
+                        <p className="text-xs text-dark-500">{product.quantity} unités vendues</p>
+                      </div>
+                    </div>
+                    <span className="font-semibold text-primary-600">{formatCurrency(product.revenue)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-dark-500">Aucune donnée disponible</div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-dark-900">Historique mensuel</h3>
+              <span className="text-2xl">📅</span>
+            </div>
+            {monthlyOverview.length > 0 ? (
+              <div className="space-y-3">
+                {monthlyOverview.map((month) => (
+                  <div key={month.label} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-semibold text-dark-900">{month.label}</p>
+                      <p className="text-xs text-dark-500">{month.salesCount} ventes</p>
+                    </div>
+                    <span className="font-semibold text-dark-900">{formatCurrency(month.revenue)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-dark-500">Pas encore de ventes enregistrées</div>
+            )}
           </div>
         </div>
       </div>

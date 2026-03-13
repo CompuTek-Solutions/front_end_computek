@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useProductStore } from '../../store/productStore';
 import { formatCurrency, printInvoice } from '../../utils/helpers';
 import { salesAPI } from '../../services/api';
@@ -13,44 +13,73 @@ const paymentLabels = {
 };
 
 export default function AdminInvoices() {
-  const { sales, fetchSales, deleteSale } = useProductStore();
+  const { sales, fetchSales, deleteSale, salesPagination, isLoading } = useProductStore();
   const [search, setSearch] = useState('');
   const [filterPayment, setFilterPayment] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [deletingId, setDeletingId] = useState(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   useEffect(() => {
-    fetchSales().catch(() => {});
-  }, [fetchSales]);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  const filtered = useMemo(() => {
-    const fromDate = dateFrom ? new Date(dateFrom) : null;
-    const toDate = dateTo ? new Date(`${dateTo}T23:59:59`) : null;
+  const fetchCurrentSales = useCallback(() => {
+    const params = {
+      page,
+      pageSize,
+    };
 
-    return sales.filter((s) => {
-      const paymentValue = s.payment_method ?? s.paymentMethod;
-      const createdAt = s.created_at ? new Date(s.created_at) : null;
+    if (debouncedSearch) {
+      params.search = debouncedSearch;
+    }
 
-      const matchPayment = filterPayment === 'all' || paymentValue === filterPayment;
-      const matchDateFrom = !fromDate || (createdAt && createdAt >= fromDate);
-      const matchDateTo = !toDate || (createdAt && createdAt <= toDate);
+    if (filterPayment !== 'all') {
+      params.payment_method = filterPayment;
+    }
 
-      const q = search.toLowerCase();
-      const matchSearch =
-        !search ||
-        (s.invoice_number || '').toLowerCase().includes(q) ||
-        (s.seller_name || '').toLowerCase().includes(q) ||
-        (s.client_name || '').toLowerCase().includes(q);
+    if (dateFrom) {
+      params.date_from = dateFrom;
+    }
 
-      return matchPayment && matchDateFrom && matchDateTo && matchSearch;
+    if (dateTo) {
+      params.date_to = dateTo;
+    }
+
+    return fetchSales(params);
+  }, [page, pageSize, debouncedSearch, filterPayment, dateFrom, dateTo, fetchSales]);
+
+  useEffect(() => {
+    fetchCurrentSales().catch(() => {});
+  }, [fetchCurrentSales]);
+
+  useEffect(() => {
+    if (!salesPagination?.totalPages) return;
+    setPage((current) => {
+      const maxPage = Math.max(1, salesPagination.totalPages);
+      return current > maxPage ? maxPage : current;
     });
-  }, [sales, search, filterPayment, dateFrom, dateTo]);
+  }, [salesPagination?.totalPages]);
 
-  const totalAmount = useMemo(
-    () => filtered.reduce((sum, s) => sum + parseFloat(s.total_amount ?? s.total ?? 0), 0),
-    [filtered]
-  );
+  const totalCount = salesPagination?.total ?? sales.length;
+  const totalAmount = salesPagination?.totalAmount ?? sales.reduce((sum, s) => sum + parseFloat(s.total_amount ?? s.total ?? 0), 0);
+  const totalPages = salesPagination?.totalPages ?? 1;
+  const showingFrom = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
+  const showingTo = totalCount === 0 ? 0 : Math.min((page - 1) * pageSize + sales.length, totalCount);
+
+  const resetFilters = () => {
+    setSearch('');
+    setFilterPayment('all');
+    setDateFrom('');
+    setDateTo('');
+    setPage(1);
+  };
 
   const handlePrint = async (saleId) => {
     try {
@@ -70,6 +99,7 @@ export default function AdminInvoices() {
     try {
       setDeletingId(saleId);
       await deleteSale(saleId);
+      await fetchCurrentSales().catch(() => {});
       toast.success('Facture supprimée');
     } catch (err) {
       const msg = err.response?.data?.error || 'Suppression impossible';
@@ -108,7 +138,10 @@ export default function AdminInvoices() {
               type="text"
               placeholder="N° facture, vendeur ou client..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-dark-900"
             />
           </div>
@@ -118,7 +151,10 @@ export default function AdminInvoices() {
             </label>
             <select
               value={filterPayment}
-              onChange={(e) => setFilterPayment(e.target.value)}
+              onChange={(e) => {
+                setFilterPayment(e.target.value);
+                setPage(1);
+              }}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-dark-900"
             >
               <option value="all">Tous</option>
@@ -131,7 +167,10 @@ export default function AdminInvoices() {
             <input
               type="date"
               value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+              onChange={(e) => {
+                setDateFrom(e.target.value);
+                setPage(1);
+              }}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-dark-900"
             />
           </div>
@@ -140,19 +179,17 @@ export default function AdminInvoices() {
             <input
               type="date"
               value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
+              onChange={(e) => {
+                setDateTo(e.target.value);
+                setPage(1);
+              }}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-dark-900"
             />
           </div>
           <div className="flex items-end">
             <button
               type="button"
-              onClick={() => {
-                setSearch('');
-                setFilterPayment('all');
-                setDateFrom('');
-                setDateTo('');
-              }}
+              onClick={resetFilters}
               className="w-full px-4 py-2 border border-primary-200 text-primary-700 rounded-lg font-medium hover:bg-primary-50 transition"
             >
               Réinitialiser
@@ -162,7 +199,9 @@ export default function AdminInvoices() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
           <div className="bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg p-4">
-            <p className="text-xs text-dark-600 mb-1">Total ({filtered.length} facture{filtered.length !== 1 ? 's' : ''})</p>
+            <p className="text-xs text-dark-600 mb-1">
+              Total ({totalCount} facture{totalCount !== 1 ? 's' : ''})
+            </p>
             <p className="text-lg font-bold text-primary-600">{formatCurrency(totalAmount)}</p>
           </div>
           <div className="rounded-lg p-4 border border-gray-200 text-sm text-dark-700">
@@ -170,7 +209,7 @@ export default function AdminInvoices() {
             <p>Période : <span className="font-semibold">{dateFrom ? `du ${dateFrom}` : '—'} {dateTo ? `au ${dateTo}` : ''}</span></p>
           </div>
           <div className="rounded-lg p-4 border border-gray-200 text-sm text-dark-700">
-            <p>Résultats filtrés : <span className="font-semibold">{filtered.length}</span></p>
+            <p>Résultats filtrés : <span className="font-semibold">{totalCount}</span></p>
             <p>Total filtré : <span className="font-semibold">{formatCurrency(totalAmount)}</span></p>
           </div>
         </div>
@@ -179,7 +218,7 @@ export default function AdminInvoices() {
       {/* Tableau */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
-          {filtered.length === 0 ? (
+          {totalCount === 0 ? (
             <div className="py-12 text-center">
               <span className="text-4xl">🧾</span>
               <p className="text-dark-500 mt-3">Aucune facture trouvée</p>
@@ -200,7 +239,7 @@ export default function AdminInvoices() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((sale) => (
+                {sales.map((sale) => (
                   <tr key={sale.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     <td className="py-3 px-3 md:px-6">
                       <span className="font-mono text-xs md:text-sm font-semibold text-primary-700">
@@ -251,6 +290,53 @@ export default function AdminInvoices() {
               </tbody>
             </table>
           )}
+        </div>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-4 py-3 border-t border-gray-200 bg-gray-50">
+          <div className="text-sm text-dark-600">
+            {totalCount === 0
+              ? 'Aucun résultat'
+              : `Affichage ${showingFrom}-${showingTo} sur ${totalCount} facture${totalCount > 1 ? 's' : ''}`}
+          </div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-center gap-2 text-sm">
+              <span>Par page</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="px-3 py-1.5 border border-gray-300 rounded-lg bg-white"
+              >
+                {[10, 25, 50].map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1 || totalCount === 0 || isLoading}
+                className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm font-medium disabled:opacity-50"
+              >
+                Précédent
+              </button>
+              <span className="text-sm text-dark-600">
+                Page {totalPages === 0 ? 0 : page} / {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages || totalCount === 0 || isLoading}
+                className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm font-medium disabled:opacity-50"
+              >
+                Suivant
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

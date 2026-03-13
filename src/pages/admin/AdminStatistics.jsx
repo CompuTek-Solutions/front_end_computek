@@ -1,6 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { useProductStore } from '../../store/productStore';
-import { getTopSellingProducts, calculateStats } from '../../utils/helpers';
 import { formatCurrency } from '../../utils/helpers';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -8,38 +7,47 @@ import {
 } from 'recharts';
 
 export default function AdminStatistics() {
-  const { products, sales, inventory } = useProductStore();
+  const { adminStats, fetchAdminStats } = useProductStore();
 
-  const stats = useMemo(() => calculateStats(sales), [sales]);
-  const topProducts = useMemo(() => getTopSellingProducts(sales, 10), [sales]);
+  useEffect(() => {
+    if (!adminStats) {
+      fetchAdminStats().catch(() => {});
+    }
+  }, [adminStats, fetchAdminStats]);
+
+  const stats = useMemo(() => {
+    return (
+      adminStats?.summary ?? {
+        totalRevenue: 0,
+        totalQuantity: 0,
+        totalOrders: 0,
+        averageOrder: 0,
+      }
+    );
+  }, [adminStats]);
+
+  const topProducts = useMemo(() => {
+    return adminStats?.topProducts?.slice(0, 10) ?? [];
+  }, [adminStats]);
 
   const monthlyData = useMemo(() => {
-    const months = {};
-    sales.forEach((sale) => {
-      const date = new Date(sale.created_at || sale.date);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      months[monthKey] = (months[monthKey] || 0) + (sale.total_amount ?? sale.total ?? 0);
-    });
-
-    return Object.entries(months).sort().map(([month, total]) => ({
-      month: new Date(`${month}-01`).toLocaleString('fr-FR', { month: 'short', year: 'numeric' }),
-      ventes: total,
-    }));
-  }, [sales]);
+    return (adminStats?.monthlySales ?? []).map((entry) => {
+      const monthLabel = entry.month
+        ? new Date(entry.month).toLocaleString('fr-FR', { month: 'short', year: 'numeric' })
+        : '—';
+      return {
+        month: monthLabel,
+        ventes: entry.total_revenue ?? entry.totalRevenue ?? 0,
+      };
+    }).reverse();
+  }, [adminStats]);
 
   const categoryData = useMemo(() => {
-    const categories = {};
-    topProducts.forEach((product) => {
-      const prod = products.find((p) => p.id === product.productId);
-      const category = prod?.category || 'Autre';
-      categories[category] = (categories[category] || 0) + product.quantity;
-    });
-
-    return Object.entries(categories).map(([category, quantity]) => ({
-      name: category,
-      value: quantity,
+    return (adminStats?.categories ?? []).map((category) => ({
+      name: category.category || 'Autre',
+      value: category.sales_count ?? category.total_revenue ?? 0,
     }));
-  }, [topProducts, products]);
+  }, [adminStats]);
 
   const colors = ['#0284c7', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 

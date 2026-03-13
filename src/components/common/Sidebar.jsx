@@ -9,12 +9,12 @@ export default function Sidebar({ role, isOpen, onClose }) {
     { name: 'Tableau de bord', path: '/admin', icon: '📊' },
     { name: 'Produits', path: '/admin/products', icon: '📦' },
     { name: 'Inventaire', path: '/admin/inventory', icon: '📋' },
-    { name: 'Ventes', path: '/admin/sales', icon: '🛒' },
+    // { name: 'Ventes', path: '/admin/sales', icon: '🛒' },
     { name: 'Factures', path: '/admin/invoices', icon: '🧾' },
     { name: 'Clients', path: '/admin/clients', icon: '👤' },
     { name: 'Statistiques', path: '/admin/statistics', icon: '📈' },
     { name: 'Utilisateurs', path: '/admin/users', icon: '👥' },
-    { name: 'Paramètres', path: '/admin/settings', icon: '⚙️' },
+    // { name: 'Paramètres', path: '/admin/settings', icon: '⚙️' },
   ];
 
   const sellerMenus = [

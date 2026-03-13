@@ -5,7 +5,10 @@ export const useProductStore = create((set, get) => ({
   products: [],
   inventory: [],
   sales: [],
+  salesPagination: null,
   users: [],
+  adminStats: null,
+  sellerStats: null,
   isLoading: false,
   error: null,
 
@@ -18,6 +21,43 @@ export const useProductStore = create((set, get) => ({
       return response.data;
     } catch (error) {
       const errorMsg = error.response?.data?.error || 'Erreur lors du chargement des produits';
+      set({ error: errorMsg, isLoading: false });
+      throw error;
+    }
+  },
+
+  fetchSellerStats: async (sellerId) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await salesAPI.getSellerStats(sellerId);
+      const payload = response.data || {};
+      const summary = payload.summary || {};
+      const formattedTopProducts = (payload.top_products || []).map((product) => ({
+        productId: product.id,
+        name: product.name,
+        quantity: product.quantity_sold ?? 0,
+        revenue: product.total_revenue ?? 0,
+      }));
+
+      set({
+        sellerStats: {
+          summary: {
+            totalRevenue: summary.total_revenue ?? 0,
+            totalOrders: summary.total_orders ?? 0,
+            totalQuantity: summary.total_items ?? 0,
+            averageOrder: summary.avg_order ?? 0,
+          },
+          topProducts: formattedTopProducts,
+          categories: payload.categories || [],
+          monthlySales: payload.monthly_sales || [],
+          commissionRate: payload.commission_rate ?? 0,
+          commission: payload.commission ?? 0,
+        },
+        isLoading: false,
+      });
+      return payload;
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Erreur lors du chargement des statistiques vendeur';
       set({ error: errorMsg, isLoading: false });
       throw error;
     }
@@ -162,10 +202,48 @@ export const useProductStore = create((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await salesAPI.getAll(params);
-      set({ sales: response.data, isLoading: false });
-      return response.data;
+      const payload = response.data;
+      const salesData = Array.isArray(payload) ? payload : payload?.data ?? [];
+      const pagination = Array.isArray(payload) ? null : payload?.pagination ?? null;
+      set({ sales: salesData, salesPagination: pagination, isLoading: false });
+      return payload;
     } catch (error) {
       const errorMsg = error.response?.data?.error || 'Erreur lors du chargement des ventes';
+      set({ error: errorMsg, isLoading: false });
+      throw error;
+    }
+  },
+
+  fetchAdminStats: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await salesAPI.getStatistics();
+      const payload = response.data || {};
+      const summary = payload.summary || {};
+      const formattedTopProducts = (payload.top_products || []).map((product) => ({
+        productId: product.id,
+        name: product.name,
+        quantity: product.quantity_sold ?? 0,
+        revenue: product.total_revenue ?? 0,
+      }));
+
+      set({
+        adminStats: {
+          summary: {
+            totalRevenue: summary.total_revenue ?? 0,
+            totalQuantity: summary.total_items ?? 0,
+            totalOrders: summary.total_orders ?? 0,
+            averageOrder: summary.avg_order ?? 0,
+          },
+          topProducts: formattedTopProducts,
+          categories: payload.categories || [],
+          monthlySales: payload.monthly_sales || [],
+        },
+        isLoading: false,
+      });
+      return payload;
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Erreur lors du chargement des statistiques';
       set({ error: errorMsg, isLoading: false });
       throw error;
     }
@@ -199,12 +277,21 @@ export const useProductStore = create((set, get) => ({
 
   // Clients
   clients: [],
+  clientsPagination: null,
   fetchClients: async (params = {}) => {
     set({ isLoading: true, error: null });
     try {
       const response = await clientAPI.getAll(params);
-      set((state) => ({ ...state, clients: response.data, isLoading: false }));
-      return response.data;
+      const payload = response.data;
+      const clientsData = Array.isArray(payload) ? payload : payload?.data ?? [];
+      const pagination = Array.isArray(payload) ? null : payload?.pagination ?? null;
+      set((state) => ({
+        ...state,
+        clients: clientsData,
+        clientsPagination: pagination,
+        isLoading: false,
+      }));
+      return payload;
     } catch (error) {
       const errorMsg = error.response?.data?.error || 'Erreur lors du chargement des clients';
       set({ error: errorMsg, isLoading: false });

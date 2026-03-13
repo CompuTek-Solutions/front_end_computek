@@ -1,18 +1,32 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { useProductStore } from '../../store/productStore';
-import { calculateStats, getTopSellingProducts } from '../../utils/helpers';
 import { formatCurrency } from '../../utils/helpers';
 
 export default function AdminDashboard() {
-  const { products, sales, inventory } = useProductStore();
+  const { products, inventory, adminStats, fetchProducts, fetchInventory, fetchAdminStats } = useProductStore();
+  const [lowStockPage, setLowStockPage] = useState(1);
+  const LOW_STOCK_PER_PAGE = 5;
+
+  useEffect(() => {
+    fetchProducts().catch(() => {});
+    fetchInventory().catch(() => {});
+    fetchAdminStats().catch(() => {});
+  }, [fetchProducts, fetchInventory, fetchAdminStats]);
 
   const stats = useMemo(() => {
-    return calculateStats(sales);
-  }, [sales]);
+    return (
+      adminStats?.summary ?? {
+        totalRevenue: 0,
+        totalQuantity: 0,
+        totalOrders: 0,
+        averageOrder: 0,
+      }
+    );
+  }, [adminStats]);
 
   const topProducts = useMemo(() => {
-    return getTopSellingProducts(sales, 5);
-  }, [sales]);
+    return adminStats?.topProducts?.slice(0, 5) ?? [];
+  }, [adminStats]);
 
   const lowStockProducts = useMemo(() => {
     return products.filter((product) => {
@@ -20,6 +34,17 @@ export default function AdminDashboard() {
       return quantity < 10 && quantity > 0;
     });
   }, [products, inventory]);
+
+  const totalLowStockPages = Math.max(1, Math.ceil(lowStockProducts.length / LOW_STOCK_PER_PAGE));
+
+  useEffect(() => {
+    setLowStockPage((current) => (current > totalLowStockPages ? totalLowStockPages : current));
+  }, [totalLowStockPages]);
+
+  const paginatedLowStockProducts = useMemo(() => {
+    const start = (lowStockPage - 1) * LOW_STOCK_PER_PAGE;
+    return lowStockProducts.slice(start, start + LOW_STOCK_PER_PAGE);
+  }, [lowStockProducts, lowStockPage]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
@@ -127,7 +152,7 @@ export default function AdminDashboard() {
                   </thead>
                   <tbody>
                     {topProducts.map((product, index) => (
-                      <tr key={product.productId} className="border-b border-gray-100 hover:bg-gray-50">
+                      <tr key={product.productId || product.id || index} className="border-b border-gray-100 hover:bg-gray-50">
                         <td className="py-3 px-4">
                           <div className="flex items-center space-x-3">
                             <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
@@ -178,7 +203,7 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {lowStockProducts.map((product) => {
+                    {paginatedLowStockProducts.map((product) => {
                       const qty = inventory.find((i) => i.product_id === product.id)?.quantity_on_hand ?? 0;
                       return (
                         <tr key={product.id} className="border-b border-gray-100 hover:bg-red-50">
@@ -205,6 +230,28 @@ export default function AdminDashboard() {
                     })}
                   </tbody>
                 </table>
+
+                {totalLowStockPages > 1 && (
+                  <div className="flex items-center justify-between mt-4 text-sm text-dark-600">
+                    <button
+                      className="px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => setLowStockPage((page) => Math.max(1, page - 1))}
+                      disabled={lowStockPage === 1}
+                    >
+                      Précédent
+                    </button>
+                    <span>
+                      Page {lowStockPage} / {totalLowStockPages}
+                    </span>
+                    <button
+                      className="px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => setLowStockPage((page) => Math.min(totalLowStockPages, page + 1))}
+                      disabled={lowStockPage === totalLowStockPages}
+                    >
+                      Suivant
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="text-center py-8">

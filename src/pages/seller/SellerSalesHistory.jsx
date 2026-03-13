@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useState, useCallback } from 'react';
 import { useProductStore } from '../../store/productStore';
 import { formatCurrency, printInvoice } from '../../utils/helpers';
 import { dateTimeToString } from '../../utils/dateUtils';
@@ -14,19 +14,38 @@ const paymentLabels = {
 };
 
 export default function SellerSalesHistory() {
-  const { sales, fetchSales } = useProductStore();
+  const { sales, fetchSales, salesPagination, isLoading } = useProductStore();
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const fetchCurrentSales = useCallback(() => {
+    return fetchSales({ page, pageSize });
+  }, [fetchSales, page, pageSize]);
 
   useEffect(() => {
-    fetchSales().catch(() => {});
-  }, [fetchSales]);
+    fetchCurrentSales().catch(() => {});
+  }, [fetchCurrentSales]);
 
+  useEffect(() => {
+    if (!salesPagination?.totalPages) return;
+    setPage((current) => {
+      const maxPage = Math.max(1, salesPagination.totalPages);
+      return current > maxPage ? maxPage : current;
+    });
+  }, [salesPagination?.totalPages]);
+
+  const totalCount = salesPagination?.total ?? sales.length;
   const totalRevenue = useMemo(() => {
+    if (salesPagination?.totalAmount !== undefined) {
+      return salesPagination.totalAmount;
+    }
     return sales.reduce((sum, sale) => sum + (sale.total_amount ?? sale.total ?? 0), 0);
-  }, [sales]);
+  }, [sales, salesPagination?.totalAmount]);
 
   const averageOrder = useMemo(() => {
-    return sales.length > 0 ? totalRevenue / sales.length : 0;
-  }, [sales, totalRevenue]);
+    if (totalCount === 0) return 0;
+    return totalRevenue / totalCount;
+  }, [totalRevenue, totalCount]);
 
   const handlePrintInvoice = async (saleId) => {
     try {
@@ -88,7 +107,9 @@ export default function SellerSalesHistory() {
       {/* Sales Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
-          {sales.length === 0 ? (
+          {isLoading && sales.length === 0 ? (
+            <div className="py-12 text-center">Chargement des ventes...</div>
+          ) : totalCount === 0 ? (
             <div className="py-12 text-center">
               <span className="text-4xl">📝</span>
               <p className="text-dark-500 mt-2">Aucune vente enregistrée</p>
@@ -147,16 +168,65 @@ export default function SellerSalesHistory() {
             </table>
           )}
         </div>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-4 py-3 border-t border-gray-200 bg-gray-50">
+          <div className="text-sm text-dark-600">
+            {totalCount === 0
+              ? 'Aucun résultat'
+              : `Affichage ${(page - 1) * pageSize + 1}-${Math.min((page - 1) * pageSize + sales.length, totalCount)} sur ${totalCount} vente${totalCount > 1 ? 's' : ''}`}
+          </div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-center gap-2 text-sm">
+              <span>Par page</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="px-3 py-1.5 border border-gray-300 rounded-lg bg-white"
+              >
+                {[10, 25, 50].map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1 || totalCount === 0 || isLoading}
+                className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm font-medium disabled:opacity-50"
+              >
+                Précédent
+              </button>
+              <span className="text-sm text-dark-600">
+                Page {salesPagination?.totalPages ? page : sales.length === 0 ? 0 : 1} / {salesPagination?.totalPages ?? 1}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(salesPagination?.totalPages ?? 1, p + 1))}
+                disabled={
+                  page >= (salesPagination?.totalPages ?? 1) || totalCount === 0 || isLoading
+                }
+                className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm font-medium disabled:opacity-50"
+              >
+                Suivant
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Summary */}
-      {sales.length > 0 && (
+      {totalCount > 0 && (
         <div className="bg-gradient-to-r from-primary-50 to-blue-50 rounded-xl border border-primary-200 p-6">
           <h3 className="text-lg font-semibold text-dark-900 mb-4">Résumé de performance</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div>
               <p className="text-dark-600 mb-1">Nombre total de transactions</p>
-              <p className="text-2xl font-bold text-primary-600">{sales.length}</p>
+              <p className="text-2xl font-bold text-primary-600">{totalCount}</p>
             </div>
             <div>
               <p className="text-dark-600 mb-1">Chiffre d'affaires total</p>
