@@ -14,7 +14,15 @@ export default function SellerNewSale() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClientId, setSelectedClientId] = useState('');
   const [showNewClient, setShowNewClient] = useState(false);
-  const [newClient, setNewClient] = useState({ name: '', email: '', phone: '', address: '' });
+  const [newClient, setNewClient] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    rccm: '',
+    postal_box: '',
+    nc: '',
+  });
   const [lastScannedBarcode, setLastScannedBarcode] = useState('');
   const [lastScanTime, setLastScanTime] = useState(0);
   const [posBarcode, setPosBarcode] = useState('');
@@ -186,7 +194,7 @@ export default function SellerNewSale() {
       const created = await addClient(newClient);
       setSelectedClientId(created.id);
       setShowNewClient(false);
-      setNewClient({ name: '', email: '', phone: '', address: '' });
+      setNewClient({ name: '', email: '', phone: '', address: '', rccm: '', postal_box: '', nc: '' });
       toast.success('Client ajouté');
     } catch (err) {
       toast.error(err.response?.data?.error || 'Erreur lors de l\'ajout du client');
@@ -568,6 +576,36 @@ export default function SellerNewSale() {
                       onChange={(e) => setNewClient((p) => ({ ...p, phone: e.target.value }))} 
                       className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-dark-900 bg-white text-sm" 
                     />
+                    <input 
+                      type="text" 
+                      placeholder="Adresse" 
+                      value={newClient.address} 
+                      onChange={(e) => setNewClient((p) => ({ ...p, address: e.target.value }))} 
+                      className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-dark-900 bg-white text-sm" 
+                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <input 
+                        type="text" 
+                        placeholder="RCCM" 
+                        value={newClient.rccm} 
+                        onChange={(e) => setNewClient((p) => ({ ...p, rccm: e.target.value }))} 
+                        className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-dark-900 bg-white text-sm" 
+                      />
+                      <input 
+                        type="text" 
+                        placeholder="Boîte postale" 
+                        value={newClient.postal_box} 
+                        onChange={(e) => setNewClient((p) => ({ ...p, postal_box: e.target.value }))} 
+                        className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-dark-900 bg-white text-sm" 
+                      />
+                    </div>
+                    <input 
+                      type="text" 
+                      placeholder="NC" 
+                      value={newClient.nc} 
+                      onChange={(e) => setNewClient((p) => ({ ...p, nc: e.target.value }))} 
+                      className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-dark-900 bg-white text-sm" 
+                    />
                     <div className="flex gap-2">
                       <button 
                         type="submit" 
@@ -577,7 +615,10 @@ export default function SellerNewSale() {
                       </button>
                       <button 
                         type="button" 
-                        onClick={() => { setShowNewClient(false); setNewClient({ name: '', email: '', phone: '', address: '' }); }} 
+                        onClick={() => {
+                          setShowNewClient(false);
+                          setNewClient({ name: '', email: '', phone: '', address: '', rccm: '', postal_box: '', nc: '' });
+                        }} 
                         className="flex-1 py-1.5 border border-gray-300 text-dark-700 rounded-lg text-sm hover:bg-gray-50 transition-colors"
                       >
                         Annuler
