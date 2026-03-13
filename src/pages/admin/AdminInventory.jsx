@@ -134,13 +134,13 @@ export default function AdminInventory() {
           <h1 className="text-xl md:text-2xl font-bold text-dark-900">Gestion de l'Inventaire</h1>
           <p className="text-dark-600 mt-1 text-sm md:text-base">Suivi et analyse du stock en temps réel</p>
         </div>
-        <button
+        {/* <button
           onClick={() => setShowBarcodeGenerator(true)}
           className="px-4 md:px-6 py-2 md:py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all flex items-center space-x-2 font-medium shadow-sm text-sm md:text-base"
         >
           <span>🏷️</span>
           <span>Imprimer étiquettes</span>
-        </button>
+        </button> */}
       </div>
 
       {/* Barcode Generator Modal */}
