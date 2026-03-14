@@ -121,7 +121,7 @@ export default function AdminInventory() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" translate="no">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -197,7 +197,7 @@ export default function AdminInventory() {
       </div>
 
       {/* Filters and Controls */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6" translate="no">
         <div className="flex flex-col lg:flex-row lg:items-center gap-4">
           {/* Stock Filter */}
           <div className="flex items-center gap-2 flex-shrink-0">
