@@ -36,38 +36,32 @@ export default function AdminInventory() {
       list = list.filter((item) => item.quantity === 0);
     }
 
+    const compareStrings = (aValue, bValue) =>
+      sortOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+
+    const compareNumbers = (aValue, bValue) =>
+      sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+
+    const toNumber = (value) => {
+      const num = Number(value);
+      return Number.isFinite(num) ? num : 0;
+    };
+
     // Tri des produits
     return list.sort((a, b) => {
-      let aValue, bValue;
-
       switch (sortBy) {
         case 'price':
-          aValue = a.price || 0;
-          bValue = b.price || 0;
-          break;
+          return compareNumbers(toNumber(a.price), toNumber(b.price));
         case 'quantity':
-          aValue = a.quantity || 0;
-          bValue = b.quantity || 0;
-          break;
+          return compareNumbers(toNumber(a.quantity), toNumber(b.quantity));
         case 'value':
-          aValue = (a.price || 0) * (a.quantity || 0);
-          bValue = (b.price || 0) * (b.quantity || 0);
-          break;
+          return compareNumbers(
+            toNumber(a.price) * toNumber(a.quantity),
+            toNumber(b.price) * toNumber(b.quantity)
+          );
         case 'name':
         default:
-          aValue = a.name.toLowerCase();
-          bValue = b.name.toLowerCase();
-          break;
-      }
-
-      if (typeof aValue === 'string') {
-        return sortOrder === 'asc' 
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
-      } else {
-        return sortOrder === 'asc' 
-          ? aValue - bValue
-          : bValue - aValue;
+          return compareStrings(a.name.toLowerCase(), b.name.toLowerCase());
       }
     });
   }, [products, inventory, sortBy, sortOrder, filterStock]);
