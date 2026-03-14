@@ -4,6 +4,27 @@ import { useAuthStore } from '../../store/authStore';
 export default function Header({ title, onToggleSidebar }) {
   const { user, logout } = useAuthStore();
 
+  const displayName = React.useMemo(() => {
+    const name = user?.name?.trim();
+    if (name && name.length > 0) {
+      return name;
+    }
+
+    const email = user?.email?.trim();
+    if (email && email.length > 0) {
+      return email.split('@')[0];
+    }
+
+    const roleFallback = user?.role?.trim();
+    if (roleFallback && roleFallback.length > 0) {
+      return roleFallback;
+    }
+
+    return 'Utilisateur';
+  }, [user?.name, user?.email, user?.role]);
+
+  const avatarInitial = displayName?.charAt(0)?.toUpperCase() || 'U';
+
   const handleLogout = () => {
     logout();
     window.location.href = '/';
@@ -37,7 +58,7 @@ export default function Header({ title, onToggleSidebar }) {
         {/* Right: user info + logout */}
         <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
           <div className="text-right hidden sm:block">
-            <p className="font-semibold text-dark-900 text-sm sm:text-base">{user?.name || 'Utilisateur'}</p>
+            <p className="font-semibold text-dark-900 text-sm sm:text-base">{displayName}</p>
             <p className="text-xs sm:text-sm text-dark-500 capitalize">
               {user?.role === 'admin' ? 'Administrateur' : 'Vendeur'}
             </p>
@@ -45,7 +66,7 @@ export default function Header({ title, onToggleSidebar }) {
 
           <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-gray-500 to-gray-600 rounded-full flex items-center justify-center flex-shrink-0">
             <span className="text-white font-semibold text-sm">
-              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+              {avatarInitial}
             </span>
           </div>
 
