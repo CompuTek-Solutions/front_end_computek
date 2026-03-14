@@ -65,7 +65,7 @@ export default function Header({ title, onToggleSidebar }) {
           </div>
 
           <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-gray-500 to-gray-600 rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-semibold text-sm">
+            <span className="text-white font-semibold text-sm" translate="no">
               {avatarInitial}
             </span>
           </div>

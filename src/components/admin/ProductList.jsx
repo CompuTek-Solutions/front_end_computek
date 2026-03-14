@@ -53,7 +53,7 @@ export default function ProductList({ products, onEdit }) {
                 <td className="py-3 px-3 md:px-6">
                   <div className="flex items-center space-x-2 md:space-x-3">
                     <div className="w-8 h-8 md:w-10 md:h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-blue-700 font-semibold text-sm">
+                      <span className="text-blue-700 font-semibold text-sm" translate="no">
                         {product.name.charAt(0).toUpperCase()}
                       </span>
                     </div>
