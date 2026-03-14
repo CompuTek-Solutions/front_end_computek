@@ -135,7 +135,10 @@ export default function AdminProducts() {
       )}
 
       {/* Search and Sort Bar */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+      <div
+        className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6"
+        translate="no"
+      >
         <div className="flex flex-col md:flex-row md:items-center gap-4">
           {/* Search Input */}
           <div className="flex-1">
@@ -145,6 +148,7 @@ export default function AdminProducts() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white text-dark-900 placeholder-gray-500 text-sm md:text-base"
+              translate="no"
             />
           </div>
           
@@ -159,6 +163,7 @@ export default function AdminProducts() {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
               title={`Trier par nom ${sortBy === 'name' && sortOrder === 'asc' ? '(Z-A)' : '(A-Z)'}`}
+              translate="no"
             >
               Nom {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
             </button>
@@ -170,6 +175,7 @@ export default function AdminProducts() {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
               title={`Trier par prix ${sortBy === 'price' && sortOrder === 'asc' ? '(élevé-bas)' : '(bas-élevé)'}`}
+              translate="no"
             >
               Prix {sortBy === 'price' && (sortOrder === 'asc' ? '↑' : '↓')}
             </button>
@@ -181,6 +187,7 @@ export default function AdminProducts() {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
               title={`Trier par catégorie ${sortBy === 'category' && sortOrder === 'asc' ? '(Z-A)' : '(A-Z)'}`}
+              translate="no"
             >
               Catégorie {sortBy === 'category' && (sortOrder === 'asc' ? '↑' : '↓')}
             </button>
