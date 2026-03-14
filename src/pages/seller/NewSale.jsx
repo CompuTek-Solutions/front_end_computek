@@ -29,6 +29,7 @@ export default function SellerNewSale() {
   const [showProductPanel, setShowProductPanel] = useState(false);
   const [productPage, setProductPage] = useState(0);
   const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
+  const [isAddingClient, setIsAddingClient] = useState(false);
   const barcodeFieldRef = useRef(null);
 
   const PRODUCTS_PER_PAGE = 18;
@@ -190,6 +191,7 @@ export default function SellerNewSale() {
       toast.error('Le nom du client est requis');
       return;
     }
+    setIsAddingClient(true);
     try {
       const created = await addClient(newClient);
       setSelectedClientId(created.id);
@@ -198,6 +200,8 @@ export default function SellerNewSale() {
       toast.success('Client ajouté');
     } catch (err) {
       toast.error(err.response?.data?.error || 'Erreur lors de l\'ajout du client');
+    } finally {
+      setIsAddingClient(false);
     }
   };
 
@@ -609,9 +613,12 @@ export default function SellerNewSale() {
                     <div className="flex gap-2">
                       <button 
                         type="submit" 
-                        className="flex-1 py-1.5 bg-[#047857] hover:bg-[#059669] text-white rounded-lg text-sm font-medium transition-colors"
+                        disabled={isAddingClient}
+                        className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors text-white ${
+                          isAddingClient ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#047857] hover:bg-[#059669]'
+                        }`}
                       >
-                        Enregistrer
+                        {isAddingClient ? 'Enregistrement...' : 'Enregistrer'}
                       </button>
                       <button 
                         type="button" 
