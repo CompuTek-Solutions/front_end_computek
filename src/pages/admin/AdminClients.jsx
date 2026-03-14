@@ -41,7 +41,7 @@ export default function AdminClients() {
   const showingTo = totalCount === 0 ? 0 : Math.min((page - 1) * pageSize + clients.length, totalCount);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" translate="no">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-dark-900">Clients</h1>
@@ -51,7 +51,7 @@ export default function AdminClients() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6" translate="no">
         <div className="mb-6 grid gap-4 md:grid-cols-2">
           <div>
             <label className="block text-sm font-medium text-dark-700 mb-2">Rechercher</label>
