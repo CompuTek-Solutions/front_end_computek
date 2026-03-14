@@ -26,34 +26,30 @@ export default function AdminProducts() {
         (product.barcode || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const compareStrings = (aValue, bValue) =>
+      sortOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+
+    const compareNumbers = (aValue, bValue) =>
+      sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+
+    const toNumber = (value) => {
+      const num = Number(value);
+      return Number.isFinite(num) ? num : 0;
+    };
+
     // Tri des produits
     return filtered.sort((a, b) => {
-      let aValue, bValue;
-
       switch (sortBy) {
         case 'price':
-          aValue = a.price_selling || a.price || 0;
-          bValue = b.price_selling || b.price || 0;
-          break;
+          return compareNumbers(
+            toNumber(a.price_selling ?? a.price),
+            toNumber(b.price_selling ?? b.price)
+          );
         case 'category':
-          aValue = (a.category || '').toLowerCase();
-          bValue = (b.category || '').toLowerCase();
-          break;
+          return compareStrings((a.category || '').toLowerCase(), (b.category || '').toLowerCase());
         case 'name':
         default:
-          aValue = a.name.toLowerCase();
-          bValue = b.name.toLowerCase();
-          break;
-      }
-
-      if (typeof aValue === 'string') {
-        return sortOrder === 'asc' 
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
-      } else {
-        return sortOrder === 'asc' 
-          ? aValue - bValue
-          : bValue - aValue;
+          return compareStrings(a.name.toLowerCase(), b.name.toLowerCase());
       }
     });
   }, [products, searchTerm, sortBy, sortOrder]);
