@@ -1,21 +1,63 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { useProductStore } from '../../store/productStore';
 import { useAuthStore } from '../../store/authStore';
 import { calculateStats, getTopSellingProducts } from '../../utils/helpers';
 import { formatCurrency } from '../../utils/helpers';
 
 export default function SellerPerformance() {
-  const { sales, products } = useProductStore();
+  const { sales, fetchSales, sellerStats, fetchSellerStats } = useProductStore();
   const { user } = useAuthStore();
 
-  const stats = useMemo(() => calculateStats(sales), [sales]);
-  const topProducts = useMemo(() => getTopSellingProducts(sales, 5), [sales]);
+  const toNumber = (value) => {
+    if (value === null || value === undefined || value === '') return 0;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  useEffect(() => {
+    if (!user?.id) return;
+    fetchSales({ seller_id: user.id }).catch(() => {});
+    fetchSellerStats(user.id).catch(() => {});
+  }, [fetchSales, fetchSellerStats, user?.id]);
+
+  const stats = useMemo(() => {
+    if (sellerStats?.summary) {
+      return {
+        totalRevenue: toNumber(sellerStats.summary.totalRevenue ?? sellerStats.summary.total_revenue),
+        totalQuantity: toNumber(sellerStats.summary.totalQuantity ?? sellerStats.summary.total_items),
+        averageOrder: toNumber(sellerStats.summary.averageOrder ?? sellerStats.summary.avg_order),
+        totalOrders: toNumber(sellerStats.summary.totalOrders ?? sellerStats.summary.total_orders),
+      };
+    }
+
+    const result = calculateStats(sales);
+    return {
+      totalRevenue: toNumber(result.totalRevenue),
+      totalQuantity: toNumber(result.totalQuantity),
+      averageOrder: toNumber(result.averageOrder),
+      totalOrders: toNumber(result.totalOrders),
+    };
+  }, [sales, sellerStats?.summary]);
+
+  const topProducts = useMemo(() => {
+    if (sellerStats?.topProducts?.length) {
+      return sellerStats.topProducts.map((product) => ({
+        productId: product.productId ?? product.id,
+        name: product.name,
+        quantity: toNumber(product.quantity ?? product.quantity_sold),
+        revenue: toNumber(product.revenue ?? product.total_revenue),
+      }));
+    }
+
+    return getTopSellingProducts(sales, 5);
+  }, [sales, sellerStats?.topProducts]);
 
   const commissionRate = 0; // Commission removed
   const totalCommissions = 0;
 
   const monthlyTarget = 500000;
-  const progressPercent = Math.min(100, Math.round((stats.totalRevenue / monthlyTarget) * 100));
+  const progressPercent = Math.min(100, Math.round((stats.totalRevenue / monthlyTarget) * 100)) || 0;
+  const performanceRate = progressPercent; // Reuse progress as simplified performance indicator
 
   return (
     <div className="space-y-6">

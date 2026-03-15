@@ -22,7 +22,7 @@ export default function Sidebar({ role, isOpen, onClose }) {
     { name: 'Nouvelle vente', path: '/seller/new-sale', icon: '💳' },
     { name: 'Historique', path: '/seller/sales-history', icon: '📜' },
     { name: 'Mes factures', path: '/seller/invoices', icon: '🧾' },
-    // { name: 'Mes performances', path: '/seller/performance', icon: '📊' },
+    { name: 'Mes performances', path: '/seller/performance', icon: '📊' },
   ];
 
   const menus = role === 'admin' ? adminMenus : sellerMenus;
