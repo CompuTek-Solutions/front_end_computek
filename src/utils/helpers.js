@@ -142,11 +142,11 @@ export const printInvoice = (sale) => {
   <style>
     body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #111; margin: 0; background: #fff; }
     .invoice { max-width: 850px; margin: 0 auto; padding: 24px 36px; }
-    .invoice-header { display: flex; gap: 16px; border-bottom: 2px solid #1d4ed8; padding-bottom: 12px; }
-    .logo-column { min-width: 120px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
-    .logo-box img { height: 110px; width: auto; }
+    .invoice-header { display: flex; gap: 12px; border-bottom: 2px solid #1d4ed8; padding-bottom: 12px; }
+    .logo-column { min-width: 140px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+    .logo-box img { height: 80px; width: auto; }
     .logo-label { font-size: 18px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin: 2px 0 0; text-align: left; }
-    .services-column { flex: 1; background: #f8fafc; border: 1px solid #cbd5f5; padding: 10px 16px; }
+    .services-column { flex: 1; background: #f8fafc; border: 1px solid #cbd5f5; padding: 8px 14px; }
     .service-list { margin: 0; padding: 0; list-style: none; }
     .service-list > li { font-size: 12px; display: flex; gap: 8px; line-height: 1.4; }
     .service-list > li::before { content: '▸'; font-size: 15px; color: #0f172a; line-height: 1.1; position: relative; top: -1px; }
@@ -174,7 +174,7 @@ export const printInvoice = (sale) => {
     .totals-table .grand-total { background: #1d4ed8; color: #fff; font-size: 15px; }
     .payment { margin: 14px 0; border-top: 1px dashed #475569; padding-top: 10px; }
     .signature { display: flex; justify-content: space-between; margin-top: 32px; font-weight: 600; }
-    footer { margin-top: 36px; border-top: 2px solid #1d4ed8; padding-top: 12px; font-size: 12px; line-height: 1.5; text-align: center; }
+    footer { margin-top: 36px; border: 1px solid #94a3b8; padding: 16px; font-size: 12px; line-height: 1.5; text-align: center; }
   </style>
 </head>
 <body>
@@ -182,7 +182,7 @@ export const printInvoice = (sale) => {
     <div class="invoice-header">
       <div class="logo-column">
         <div class="logo-box">
-          <img src="/logo.jpg" alt="CompuTek logo" />
+          <img src="/logo2.jpg" alt="CompuTek logo" />
         </div>
         <p class="logo-label">ETS COMPUTEK SOLUTIONS</p>
       </div>
