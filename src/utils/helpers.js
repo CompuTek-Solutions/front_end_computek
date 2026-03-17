@@ -74,6 +74,7 @@ export const printInvoice = (sale) => {
 
   const total = toNumber(sale.total_amount ?? sale.total ?? 0);
   const discount = toNumber(sale.discount_amount ?? sale.discount ?? 0);
+  const discountPercentProvided = toNumber(sale.discount_percent);
   const subtotal =
     sale.subtotal === null || sale.subtotal === undefined
       ? total + discount
@@ -118,7 +119,7 @@ export const printInvoice = (sale) => {
     .filter(Boolean)
     .join('');
 
-  const discountRate = subtotal ? (discount / subtotal) * 100 : 0;
+  const discountRate = discountPercentProvided || (subtotal ? (discount / subtotal) * 100 : 0);
 
   const rows = items
     .map(
@@ -243,8 +244,8 @@ export const printInvoice = (sale) => {
         <td class="label">Sous-total</td>
         <td style="text-align:right;">${formatCurrency(subtotal)}</td>
       </tr>
-      ${discount ? `<tr>
-        <td class="label">Remise${discountRate ? ` (${discountRate.toFixed(1)}%)` : ''}</td>
+      ${(discount > 0 || discountRate > 0) ? `<tr>
+        <td class="label">Remise (${discountRate.toFixed(1)}%)</td>
         <td style="text-align:right;">−${formatCurrency(discount)}</td>
       </tr>` : ''}
       <tr>
