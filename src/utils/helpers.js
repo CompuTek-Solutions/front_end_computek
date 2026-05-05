@@ -209,7 +209,7 @@ export const printInvoice = (sale) => {
     <div class="client-row">
       <div class="client-box">
         ${clientName ? `<p class="client-name">${clientName}</p>` : ''}
-        ${clientFields || '<p class="no-client">Aucune information client fournie</p>'}
+        ${(clientName || clientFields) ? clientFields : '<p class="no-client">Aucune information client fournie</p>'}
       </div>
     </div>
 
