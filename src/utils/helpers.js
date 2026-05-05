@@ -8,7 +8,7 @@ export const formatCurrency = (amount) => {
 export const calculateTotalSales = (sales) => {
   return sales.reduce((total, sale) => total + (sale.total_amount ?? sale.total ?? 0), 0);
 };
-
+   
 export const calculateTotalQuantity = (sales) => {
   return sales.reduce((total, sale) => {
     const items = Array.isArray(sale.items) ? sale.items : [];
@@ -63,8 +63,6 @@ export const generateInvoiceNumber = () => {
  * @param {Object} sale - { id, total_amount|total, discount_amount|discount, payment_method, created_at|date, items: [{ name, product_name, quantity, unit_price, price, subtotal, total }] }
  */
 
-
-
 export const printInvoice = (sale) => {
   const toNumber = (value) => {
     if (value === null || value === undefined || value === '') return 0;
@@ -89,16 +87,17 @@ export const printInvoice = (sale) => {
   const paymentLabels = { cash: 'Espèces', card: 'Carte bancaire', transfer: 'Virement', check: 'Chèque', paiement_marchand: 'Paiement marchand' };
   const paymentLabel = paymentLabels[sale.payment_method] || sale.payment_method || '—';
 
-  const clientSource =
-    sale.client || {
-      name: sale.client_name,
-      email: sale.client_email,
-      phone: sale.client_phone,
-      address: sale.client_address,
-      rccm: sale.client_rccm,
-      postal_box: sale.client_postal_box,
-      nc: sale.client_nc,
-    };
+  // ✅ FIX : fusion des deux sources (sale.client et sale.client_xxx)
+  // Avant, si sale.client existait mais était vide {}, les champs plats étaient ignorés.
+  const clientSource = {
+    name: sale.client?.name || sale.client_name,
+    email: sale.client?.email || sale.client_email,
+    phone: sale.client?.phone || sale.client_phone,
+    address: sale.client?.address || sale.client_address,
+    rccm: sale.client?.rccm || sale.client_rccm,
+    postal_box: sale.client?.postal_box || sale.client_postal_box,
+    nc: sale.client?.nc || sale.client_nc,
+  };
 
   const clientName = clientSource?.name;
   const clientLabels = {
