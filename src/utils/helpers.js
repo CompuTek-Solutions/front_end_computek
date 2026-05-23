@@ -1,3 +1,13 @@
+/**
+ * Normalize text by removing accents for accent-insensitive search
+ * @param {string} str - The string to normalize
+ * @returns {string} - Normalized string
+ */
+export const normalizeForSearch = (str) => {
+  if (!str) return '';
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+};
+
 export const formatCurrency = (amount) => {
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',

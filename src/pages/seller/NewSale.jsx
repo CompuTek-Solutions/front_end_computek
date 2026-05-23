@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useProductStore } from '../../store/productStore';
 import BarcodeScanner from '../../components/seller/BarcodeScanner';
-import { printInvoice, formatCurrency } from '../../utils/helpers';
+import { printInvoice, formatCurrency, normalizeForSearch } from '../../utils/helpers';
 import toast from 'react-hot-toast';
 
 export default function SellerNewSale() {
@@ -228,12 +228,14 @@ export default function SellerNewSale() {
   };
 
   const filteredProducts = useMemo(
-    () =>
-      products.filter(
+    () => {
+      const normalizedSearchTerm = normalizeForSearch(searchTerm);
+      return products.filter(
         (product) =>
-          product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (product.barcode || '').includes(searchTerm)
-      ),
+          normalizeForSearch(product.name).includes(normalizedSearchTerm) ||
+          normalizeForSearch(product.barcode || '').includes(normalizedSearchTerm)
+      );
+    },
     [products, searchTerm]
   );
 

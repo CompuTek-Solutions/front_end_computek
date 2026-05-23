@@ -3,6 +3,7 @@ import { useProductStore } from '../../store/productStore';
 import ProductForm from '../../components/admin/ProductForm';
 import ProductList from '../../components/admin/ProductList';
 import Pagination from '../../components/common/Pagination';
+import { normalizeForSearch } from '../../utils/helpers';
 
 export default function AdminProducts() {
   const [showForm, setShowForm] = useState(false);
@@ -20,10 +21,11 @@ export default function AdminProducts() {
   }, [fetchProducts, fetchInventory]);
 
   const filteredAndSortedProducts = useMemo(() => {
+    const normalizedSearchTerm = normalizeForSearch(searchTerm);
     let filtered = products.filter(
       (product) =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (product.barcode || '').toLowerCase().includes(searchTerm.toLowerCase())
+        normalizeForSearch(product.name).includes(normalizedSearchTerm) ||
+        normalizeForSearch(product.barcode || '').includes(normalizedSearchTerm)
     );
 
     const compareStrings = (aValue, bValue) =>

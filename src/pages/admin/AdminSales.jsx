@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useProductStore } from '../../store/productStore';
-import { formatCurrency, printInvoice } from '../../utils/helpers';
+import { formatCurrency, printInvoice, normalizeForSearch } from '../../utils/helpers';
 import { dateTimeToString } from '../../utils/dateUtils';
 import { salesAPI } from '../../services/api';
 import toast from 'react-hot-toast';
@@ -15,14 +15,14 @@ export default function AdminSales() {
   }, [fetchSales]);
 
   const filteredSales = useMemo(() => {
-    const q = searchTerm.toLowerCase();
+    const normalizedSearchTerm = normalizeForSearch(searchTerm);
     return sales.filter((sale) => {
       const matchesStatus = filterStatus === 'all' || sale.status === filterStatus;
       const matchesSearch =
         !searchTerm ||
-        (sale.invoice_number || '').toLowerCase().includes(q) ||
-        (sale.seller_name || '').toLowerCase().includes(q) ||
-        (sale.client_name || '').toLowerCase().includes(q);
+        normalizeForSearch(sale.invoice_number || '').includes(normalizedSearchTerm) ||
+        normalizeForSearch(sale.seller_name || '').includes(normalizedSearchTerm) ||
+        normalizeForSearch(sale.client_name || '').includes(normalizedSearchTerm);
       return matchesStatus && matchesSearch;
     });
   }, [sales, searchTerm, filterStatus]);

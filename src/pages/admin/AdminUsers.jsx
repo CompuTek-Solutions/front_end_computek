@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useProductStore } from '../../store/productStore';
+import { normalizeForSearch } from '../../utils/helpers';
 import toast from 'react-hot-toast';
 
 const EMPTY_FORM = { name: '', email: '', password: '', role: 'seller' };
@@ -17,8 +18,8 @@ export default function AdminUsers() {
 
   const filtered = users.filter(
     (u) =>
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase())
+      normalizeForSearch(u.name).includes(normalizeForSearch(searchTerm)) ||
+      normalizeForSearch(u.email).includes(normalizeForSearch(searchTerm))
   );
 
   const handleChange = (e) => {
