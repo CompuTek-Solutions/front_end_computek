@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import { useProductStore } from '../../store/productStore';
-import { formatCurrency } from '../../utils/helpers';
+import { formatCurrency, normalizeForSearch } from '../../utils/helpers';
 import BarcodeLabelsGenerator from '../../components/admin/BarcodeLabelsGenerator';
 import Pagination from '../../components/common/Pagination';
 import toast from 'react-hot-toast';
@@ -10,6 +10,7 @@ export default function AdminInventory() {
   const [sortBy, setSortBy] = React.useState('name');
   const [sortOrder, setSortOrder] = React.useState('asc');
   const [filterStock, setFilterStock] = React.useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
   const [draftQty, setDraftQty] = useState({});
@@ -22,6 +23,7 @@ export default function AdminInventory() {
   }, [fetchProducts, fetchInventory]);
 
   const inventoryList = useMemo(() => {
+    const normalizedSearchTerm = normalizeForSearch(searchTerm);
     let list = products.map((product) => ({
       id: product.id,
       name: product.name,
@@ -29,6 +31,14 @@ export default function AdminInventory() {
       price: product.price_selling ?? product.price,
       quantity: inventory.find((i) => i.product_id === product.id)?.quantity_on_hand ?? 0,
     }));
+
+    if (normalizedSearchTerm) {
+      list = list.filter(
+        (item) =>
+          normalizeForSearch(item.name).includes(normalizedSearchTerm) ||
+          normalizeForSearch(item.barcode || '').includes(normalizedSearchTerm)
+      );
+    }
 
     if (filterStock === 'low') {
       list = list.filter((item) => item.quantity > 0 && item.quantity < 10);
@@ -64,7 +74,7 @@ export default function AdminInventory() {
           return compareStrings(a.name.toLowerCase(), b.name.toLowerCase());
       }
     });
-  }, [products, inventory, sortBy, sortOrder, filterStock]);
+  }, [products, inventory, sortBy, sortOrder, filterStock, searchTerm]);
 
   // Pagination logic
   const paginatedInventoryList = useMemo(() => {
@@ -80,7 +90,7 @@ export default function AdminInventory() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterStock, sortBy, sortOrder, itemsPerPage]);
+  }, [filterStock, sortBy, sortOrder, itemsPerPage, searchTerm]);
 
   const totalValue = useMemo(() => {
     return inventoryList.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -199,6 +209,17 @@ export default function AdminInventory() {
       {/* Filters and Controls */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6" translate="no">
         <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+          <div className="flex-1">
+            <input
+              type="text"
+              placeholder="Rechercher par nom ou code-barres..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white text-dark-900 placeholder-gray-500 text-sm md:text-base"
+              translate="no"
+            />
+          </div>
+
           {/* Stock Filter */}
           <div className="flex items-center gap-2 flex-shrink-0">
             <span className="text-sm text-dark-500">Stock:</span>
@@ -234,6 +255,12 @@ export default function AdminInventory() {
             </button>
           </div>
           
+          {/* Results count */}
+          <div className="flex items-center gap-2 text-sm text-dark-500 flex-shrink-0">
+            <span>🔍</span>
+            <span>{inventoryList.length} résultat(s)</span>
+          </div>
+
           {/* Sort Buttons */}
           <div className="flex items-center gap-2 flex-shrink-0">
             <span className="text-sm text-dark-500">Trier par:</span>
