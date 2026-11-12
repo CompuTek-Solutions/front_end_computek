@@ -7,7 +7,7 @@ import CodeList from '../../components/admin/CodeList';
 import BarcodeLabelsGenerator from '../../components/admin/BarcodeLabelsGenerator';
 import Pagination from '../../components/common/Pagination';
 import {
-  Badge, Button, Card, EmptyState, PageHeader, SearchInput, SegmentedControl, StatCard,
+  Badge, Button, Card, EmptyState, ListSkeleton, PageHeader, SearchInput, SegmentedControl, StatCard,
 } from '../../components/ui';
 
 const STOCK_FILTERS = [
@@ -23,7 +23,7 @@ const SORT_OPTIONS = [
 ];
 
 export default function AdminInventory() {
-  const { products, inventory, fetchProducts, fetchInventory, updateInventoryQuantity } = useProductStore();
+  const { products, inventory, fetchProducts, fetchInventory, updateInventoryQuantity, isLoading } = useProductStore();
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
   const [filterStock, setFilterStock] = useState('all');
@@ -184,7 +184,9 @@ export default function AdminInventory() {
       </div>
 
       <Card bodyClassName="">
-        {inventoryList.length === 0 ? (
+        {isLoading && products.length === 0 ? (
+          <ListSkeleton />
+        ) : inventoryList.length === 0 ? (
           <EmptyState icon={Package} title="Aucun produit trouvé" />
         ) : (
           <>

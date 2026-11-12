@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Mail, MapPin, Phone, Users } from 'lucide-react';
 import { useProductStore } from '../../store/productStore';
 import Pagination from '../../components/common/Pagination';
-import { Card, EmptyState, PageHeader, SearchInput } from '../../components/ui';
+import { Card, EmptyState, ListSkeleton, PageHeader, SearchInput } from '../../components/ui';
 
 export default function AdminClients() {
   const { clients, fetchClients, clientsPagination, isLoading } = useProductStore();
@@ -40,7 +40,7 @@ export default function AdminClients() {
 
       <Card bodyClassName="" className="overflow-hidden">
         {isLoading && clients.length === 0 ? (
-          <p className="py-10 text-center text-dark-500">Chargement...</p>
+          <ListSkeleton />
         ) : totalCount === 0 ? (
           <EmptyState
             icon={Users}

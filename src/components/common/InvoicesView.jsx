@@ -6,7 +6,8 @@ import { formatCurrency, formatDateTime, PAYMENT_LABELS } from '../../utils/help
 import { printSaleInvoice } from '../../utils/printSaleInvoice';
 import Pagination from './Pagination';
 import {
-  Badge, Button, Card, EmptyState, PageHeader, SearchInput, StatCard, inputClass, labelClass,
+  Badge, Button, Card, EmptyState, ListSkeleton, PageHeader, SearchInput, Select, StatCard, confirmDialog,
+  inputClass, labelClass,
 } from '../ui';
 
 export default function InvoicesView({ title, isAdmin = false }) {
@@ -58,7 +59,11 @@ export default function InvoicesView({ title, isAdmin = false }) {
   };
 
   const handleDelete = async (sale) => {
-    if (!window.confirm(`Supprimer définitivement la facture ${sale.invoice_number || ''} ?`)) return;
+    const ok = await confirmDialog({
+      title: 'Supprimer la facture',
+      message: `La facture ${sale.invoice_number || ''} sera supprimée définitivement et le stock sera remis à jour.`,
+    });
+    if (!ok) return;
     try {
       setDeletingId(sale.id);
       await deleteSale(sale.id);
@@ -127,11 +132,11 @@ export default function InvoicesView({ title, isAdmin = false }) {
           </div>
           <div>
             <label className={labelClass}>Paiement</label>
-            <select value={filterPayment} onChange={setFilter(setFilterPayment)} className={inputClass}>
+            <Select value={filterPayment} onChange={setFilter(setFilterPayment)}>
               <option value="all">Tous</option>
               <option value="cash">Espèces</option>
               <option value="paiement_marchand">Paiement marchand</option>
-            </select>
+            </Select>
           </div>
           <div>
             <label className={labelClass}>Du</label>
@@ -149,7 +154,7 @@ export default function InvoicesView({ title, isAdmin = false }) {
 
       <Card bodyClassName="" className="overflow-hidden">
         {isLoading && sales.length === 0 ? (
-          <p className="py-10 text-center text-dark-500">Chargement...</p>
+          <ListSkeleton />
         ) : totalCount === 0 ? (
           <EmptyState icon={Receipt} title="Aucune facture trouvée" />
         ) : (

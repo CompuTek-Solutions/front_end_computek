@@ -118,7 +118,7 @@ export default function ClientPicker({ value, onChange, onCreate }) {
       {open && (
         <ul
           role="listbox"
-          className="absolute z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-dark-200 bg-white py-1 shadow-lg"
+          className="absolute z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-dark-200 bg-white py-1 shadow-lg animate-fade-in"
         >
           {results.map((client, index) => (
             <li key={client.id} role="option" aria-selected={highlight === index}>

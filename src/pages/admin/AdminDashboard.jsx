@@ -8,18 +8,27 @@ import { useProductStore } from '../../store/productStore';
 import { formatCurrency } from '../../utils/helpers';
 import { Badge, Button, Card, EmptyState, PageHeader, StatCard } from '../../components/ui';
 import TopProductsList from '../../components/common/TopProductsList';
+import PeriodFilter from '../../components/common/PeriodFilter';
+import { periodParams } from '../../utils/periods';
 
 const LOW_STOCK_PER_PAGE = 5;
 
 export default function AdminDashboard() {
-  const { products, inventory, adminStats, fetchProducts, fetchInventory, fetchAdminStats } = useProductStore();
+  const { products, inventory, adminStats, statsLoading, fetchProducts, fetchInventory, fetchAdminStats } = useProductStore();
   const [lowStockPage, setLowStockPage] = useState(1);
+  const [period, setPeriod] = useState('30d');
 
   useEffect(() => {
     fetchProducts().catch(() => {});
     fetchInventory().catch(() => {});
-    fetchAdminStats().catch(() => {});
-  }, [fetchProducts, fetchInventory, fetchAdminStats]);
+  }, [fetchProducts, fetchInventory]);
+
+  useEffect(() => {
+    fetchAdminStats(periodParams(period)).catch(() => {});
+  }, [fetchAdminStats, period]);
+
+  const loading = statsLoading && !adminStats;
+  const prev = adminStats?.previousSummary;
 
   const stats = adminStats?.summary ?? { totalRevenue: 0, totalQuantity: 0, totalOrders: 0, averageOrder: 0 };
   const topProducts = adminStats?.topProducts?.slice(0, 5) ?? [];
@@ -44,13 +53,15 @@ export default function AdminDashboard() {
 
   return (
     <>
-      <PageHeader title="Tableau de bord" />
+      <PageHeader title="Tableau de bord">
+        <PeriodFilter value={period} onChange={setPeriod} />
+      </PageHeader>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-        <StatCard label="Chiffre d'affaires" value={formatCurrency(stats.totalRevenue)} icon={Wallet} tone="success" />
-        <StatCard label="Articles vendus" value={stats.totalQuantity} icon={PackageCheck} />
-        <StatCard label="Ventes" value={stats.totalOrders} icon={ShoppingBag} />
-        <StatCard label="Panier moyen" value={formatCurrency(stats.averageOrder)} icon={CreditCard} />
+        <StatCard label="Chiffre d'affaires" value={formatCurrency(stats.totalRevenue)} icon={Wallet} tone="success" loading={loading} current={stats.totalRevenue} previous={prev?.totalRevenue} />
+        <StatCard label="Articles vendus" value={stats.totalQuantity} icon={PackageCheck} loading={loading} current={stats.totalQuantity} previous={prev?.totalQuantity} />
+        <StatCard label="Ventes" value={stats.totalOrders} icon={ShoppingBag} loading={loading} current={stats.totalOrders} previous={prev?.totalOrders} />
+        <StatCard label="Panier moyen" value={formatCurrency(stats.averageOrder)} icon={CreditCard} loading={loading} current={stats.averageOrder} previous={prev?.averageOrder} />
         <StatCard label="Produits" value={products.length} icon={Package} tone="neutral" />
         <StatCard label="Stock faible" value={lowStockProducts.length} icon={AlertTriangle} tone="warning" />
       </div>

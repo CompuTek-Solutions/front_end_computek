@@ -308,10 +308,26 @@ export default function SellerNewSale() {
   );
 
   const completeSale = async () => {
+    if (isGeneratingInvoice || showNewClient) return;
     await handleCompleteSale();
     setShowCheckout(false);
     focusBarcodeField();
   };
+
+  const completeSaleRef = useRef(completeSale);
+  useEffect(() => {
+    completeSaleRef.current = completeSale;
+  });
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== 'F9') return;
+      e.preventDefault();
+      completeSaleRef.current();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const checkoutFields = (
     <div className="space-y-5">
@@ -379,6 +395,7 @@ export default function SellerNewSale() {
       className="w-full"
     >
       Valider la vente
+      <kbd className="hidden md:inline rounded bg-white/20 px-1.5 py-0.5 text-xs font-semibold">F9</kbd>
     </Button>
   );
 

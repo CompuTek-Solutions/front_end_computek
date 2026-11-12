@@ -7,7 +7,7 @@ export default function PageHeader({ title, subtitle, children }) {
         <h1 className="text-xl sm:text-2xl font-bold text-dark-900">{title}</h1>
         {subtitle && <p className="text-sm text-dark-500 mt-0.5">{subtitle}</p>}
       </div>
-      {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}
+      {children && <div className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">{children}</div>}
     </div>
   );
 }

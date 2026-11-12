@@ -1,10 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CreditCard, History, PackageCheck, Receipt, ShoppingBag, ShoppingCart, TrendingUp, Wallet } from 'lucide-react';
 import { useProductStore } from '../../store/productStore';
 import { useAuthStore } from '../../store/authStore';
 import { formatCurrency } from '../../utils/helpers';
 import TopProductsList from '../../components/common/TopProductsList';
+import PeriodFilter from '../../components/common/PeriodFilter';
+import { periodParams } from '../../utils/periods';
 import { Card, EmptyState, PageHeader, StatCard } from '../../components/ui';
 
 const QUICK_ACTIONS = [
@@ -15,12 +17,16 @@ const QUICK_ACTIONS = [
 ];
 
 export default function SellerDashboard() {
-  const { sellerStats, fetchSellerStats } = useProductStore();
+  const { sellerStats, statsLoading, fetchSellerStats } = useProductStore();
   const { user } = useAuthStore();
+  const [period, setPeriod] = useState('30d');
 
   useEffect(() => {
-    if (user?.id) fetchSellerStats(user.id).catch(() => {});
-  }, [user?.id, fetchSellerStats]);
+    if (user?.id) fetchSellerStats(user.id, periodParams(period)).catch(() => {});
+  }, [user?.id, fetchSellerStats, period]);
+
+  const loading = statsLoading && !sellerStats;
+  const prev = sellerStats?.previousSummary;
 
   const stats = sellerStats?.summary ?? { totalRevenue: 0, totalOrders: 0, totalQuantity: 0, averageOrder: 0 };
   const months = (sellerStats?.monthlySales ?? []).map((entry) => ({
@@ -31,7 +37,9 @@ export default function SellerDashboard() {
 
   return (
     <>
-      <PageHeader title={`Bonjour ${user?.name || ''}`.trim()} />
+      <PageHeader title={`Bonjour ${user?.name || ''}`.trim()}>
+        <PeriodFilter value={period} onChange={setPeriod} />
+      </PageHeader>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {QUICK_ACTIONS.map(({ to, label, icon: Icon, primary }) => (
@@ -51,10 +59,10 @@ export default function SellerDashboard() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <StatCard label="Mes ventes" value={formatCurrency(stats.totalRevenue)} icon={Wallet} tone="success" />
-        <StatCard label="Nombre de ventes" value={stats.totalOrders} icon={ShoppingBag} />
-        <StatCard label="Articles vendus" value={stats.totalQuantity} icon={PackageCheck} />
-        <StatCard label="Panier moyen" value={formatCurrency(stats.averageOrder)} icon={CreditCard} tone="neutral" />
+        <StatCard label="Mes ventes" value={formatCurrency(stats.totalRevenue)} icon={Wallet} tone="success" loading={loading} current={stats.totalRevenue} previous={prev?.totalRevenue} />
+        <StatCard label="Nombre de ventes" value={stats.totalOrders} icon={ShoppingBag} loading={loading} current={stats.totalOrders} previous={prev?.totalOrders} />
+        <StatCard label="Articles vendus" value={stats.totalQuantity} icon={PackageCheck} loading={loading} current={stats.totalQuantity} previous={prev?.totalQuantity} />
+        <StatCard label="Panier moyen" value={formatCurrency(stats.averageOrder)} icon={CreditCard} tone="neutral" loading={loading} current={stats.averageOrder} previous={prev?.averageOrder} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
