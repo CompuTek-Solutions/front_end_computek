@@ -18,7 +18,7 @@ const toNumber = (value) => {
 export default function SellerPerformance() {
   const { sellerStats, statsLoading, fetchSellerStats } = useProductStore();
   const { user } = useAuthStore();
-  const [period, setPeriod] = useState('30d');
+  const [period, setPeriod] = useState('all');
 
   useEffect(() => {
     if (user?.id) fetchSellerStats(user.id, periodParams(period)).catch(() => {});

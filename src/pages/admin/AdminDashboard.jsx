@@ -16,7 +16,7 @@ const LOW_STOCK_PER_PAGE = 5;
 export default function AdminDashboard() {
   const { products, inventory, adminStats, statsLoading, fetchProducts, fetchInventory, fetchAdminStats } = useProductStore();
   const [lowStockPage, setLowStockPage] = useState(1);
-  const [period, setPeriod] = useState('30d');
+  const [period, setPeriod] = useState('all');
 
   useEffect(() => {
     fetchProducts().catch(() => {});

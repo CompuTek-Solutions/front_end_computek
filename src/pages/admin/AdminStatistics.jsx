@@ -15,7 +15,7 @@ const compact = (v) => new Intl.NumberFormat('fr-FR', { notation: 'compact', max
 
 export default function AdminStatistics() {
   const { adminStats, statsLoading, fetchAdminStats } = useProductStore();
-  const [period, setPeriod] = useState('30d');
+  const [period, setPeriod] = useState('all');
 
   useEffect(() => {
     fetchAdminStats(periodParams(period)).catch(() => {});
