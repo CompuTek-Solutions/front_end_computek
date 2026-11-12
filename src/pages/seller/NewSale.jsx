@@ -1,16 +1,17 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useProductStore } from '../../store/productStore';
 import BarcodeScanner from '../../components/seller/BarcodeScanner';
+import ClientPicker from '../../components/seller/ClientPicker';
 import { printInvoice, formatCurrency, normalizeForSearch, getProductCodes, productMatchesSearch } from '../../utils/helpers';
 import toast from 'react-hot-toast';
 import {
   Camera, CheckCircle2, ChevronLeft, ChevronRight, Minus, Package, Plus, ScanBarcode, ShoppingCart,
-  Trash2, UserPlus, X,
+  Trash2, X,
 } from 'lucide-react';
 import { Badge, Button, EmptyState, Modal, SearchInput, inputClass, labelClass } from '../../components/ui';
 
 export default function SellerNewSale() {
-  const { products, addSale, clients, fetchClients, addClient, fetchProducts, fetchInventory, getInventoryQuantity, getProductByBarcode } = useProductStore();
+  const { products, addSale, addClient, fetchProducts, fetchInventory, getInventoryQuantity, getProductByBarcode } = useProductStore();
   const [cartItems, setCartItems] = useState([]);
   const [showScanner, setShowScanner] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -19,7 +20,7 @@ export default function SellerNewSale() {
   const [discountAmountInput, setDiscountAmountInput] = useState('');
   const [notes, setNotes] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedClientId, setSelectedClientId] = useState('');
+  const [selectedClient, setSelectedClient] = useState(null);
   const [showNewClient, setShowNewClient] = useState(false);
   const [newClient, setNewClient] = useState({
     name: '',
@@ -45,10 +46,6 @@ export default function SellerNewSale() {
   const focusBarcodeField = useCallback(() => {
     setTimeout(() => barcodeFieldRef.current?.focus(), 80);
   }, []);
-
-  useEffect(() => {
-    fetchClients().catch(() => {});
-  }, [fetchClients]);
 
   useEffect(() => {
     fetchProducts().catch(() => {});
@@ -125,7 +122,7 @@ export default function SellerNewSale() {
     setDiscountAmountInput('');
     setNotes('');
     setPaymentMethod('cash');
-    setSelectedClientId('');
+    setSelectedClient(null);
   };
 
   const handleCompleteSale = async () => {
@@ -141,13 +138,12 @@ export default function SellerNewSale() {
       }
     }
 
-    const selectedClient = clients.find((c) => c.id === selectedClientId);
     const sale = {
       items: cartItems,
       discount: discountAmount,
       paymentMethod,
       notes,
-      client_id: selectedClientId || null,
+      client_id: selectedClient?.id || null,
     };
 
     setIsGeneratingInvoice(true);
@@ -170,6 +166,13 @@ export default function SellerNewSale() {
     }
   };
 
+  const openNewClient = (term = '') => {
+    const value = term.trim();
+    const field = value.includes('@') ? 'email' : /^[+\d\s().-]{6,}$/.test(value) ? 'phone' : 'name';
+    setNewClient({ name: '', email: '', phone: '', address: '', rccm: '', postal_box: '', nc: '', [field]: value });
+    setShowNewClient(true);
+  };
+
   const handleAddClient = async (e) => {
     e.preventDefault();
     if (!newClient.name.trim()) {
@@ -179,7 +182,7 @@ export default function SellerNewSale() {
     setIsAddingClient(true);
     try {
       const created = await addClient(newClient);
-      setSelectedClientId(created.id);
+      setSelectedClient(created);
       setShowNewClient(false);
       setNewClient({ name: '', email: '', phone: '', address: '', rccm: '', postal_box: '', nc: '' });
       toast.success('Client ajouté');
@@ -388,22 +391,8 @@ export default function SellerNewSale() {
       </div>
 
       <div>
-        <div className="flex items-center justify-between mb-1.5">
-          <label className={labelClass.replace('mb-1.5', '')}>Client</label>
-          <button
-            type="button"
-            onClick={() => setShowNewClient(true)}
-            className="inline-flex items-center gap-1 text-sm font-medium text-primary-700 hover:underline"
-          >
-            <UserPlus className="h-4 w-4" /> Nouveau
-          </button>
-        </div>
-        <select value={selectedClientId} onChange={(e) => setSelectedClientId(e.target.value)} className={inputClass}>
-          <option value="">Sans client</option>
-          {clients.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}{c.phone ? ` – ${c.phone}` : ''}</option>
-          ))}
-        </select>
+        <label className={labelClass}>Client</label>
+        <ClientPicker value={selectedClient} onChange={setSelectedClient} onCreate={openNewClient} />
       </div>
 
       <div>
