@@ -15,8 +15,6 @@ export default function SellerNewSale() {
   const [cartItems, setCartItems] = useState([]);
   const [showScanner, setShowScanner] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [discountMode, setDiscountMode] = useState('percent');
-  const [discountPercentInput, setDiscountPercentInput] = useState('');
   const [discountAmountInput, setDiscountAmountInput] = useState('');
   const [notes, setNotes] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -117,8 +115,6 @@ export default function SellerNewSale() {
 
   const resetSale = () => {
     setCartItems([]);
-    setDiscountMode('percent');
-    setDiscountPercentInput('');
     setDiscountAmountInput('');
     setNotes('');
     setPaymentMethod('cash');
@@ -212,13 +208,8 @@ export default function SellerNewSale() {
   );
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
-  const numericPercent = Math.min(100, Math.max(0, parseFloat(discountPercentInput)));
   const numericAmount = Math.max(0, parseFloat(discountAmountInput));
-  const discountPercent = Number.isFinite(numericPercent) ? numericPercent : 0;
-  const enteredAmount = Number.isFinite(numericAmount) ? numericAmount : 0;
-  const discountAmount = discountMode === 'percent'
-    ? (subtotal * discountPercent) / 100
-    : Math.min(enteredAmount, subtotal);
+  const discountAmount = Math.min(Number.isFinite(numericAmount) ? numericAmount : 0, subtotal);
   const derivedDiscountPercent = subtotal > 0 ? (discountAmount / subtotal) * 100 : 0;
   const total = subtotal - discountAmount;
 
@@ -325,46 +316,16 @@ export default function SellerNewSale() {
   const checkoutFields = (
     <div className="space-y-5">
       <div>
-        <div className="flex items-center justify-between mb-1.5">
-          <label className={labelClass.replace('mb-1.5', '')}>Remise</label>
-          <div className="flex rounded-lg bg-dark-100 p-0.5 text-xs font-semibold">
-            {[
-              { value: 'percent', label: '%' },
-              { value: 'amount', label: 'FCFA' },
-            ].map((mode) => (
-              <button
-                key={mode.value}
-                type="button"
-                onClick={() => setDiscountMode(mode.value)}
-                className={`rounded-md px-3 py-1 ${discountMode === mode.value ? 'bg-white text-primary-700 shadow-sm' : 'text-dark-500'}`}
-              >
-                {mode.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        {discountMode === 'percent' ? (
-          <input
-            type="number"
-            inputMode="decimal"
-            value={discountPercentInput}
-            onChange={(e) => setDiscountPercentInput(e.target.value)}
-            className={inputClass}
-            min="0"
-            max="100"
-            placeholder="0 %"
-          />
-        ) : (
-          <input
-            type="number"
-            inputMode="numeric"
-            value={discountAmountInput}
-            onChange={(e) => setDiscountAmountInput(e.target.value)}
-            className={inputClass}
-            min="0"
-            placeholder="0 FCFA"
-          />
-        )}
+        <label className={labelClass}>Remise (FCFA)</label>
+        <input
+          type="number"
+          inputMode="numeric"
+          value={discountAmountInput}
+          onChange={(e) => setDiscountAmountInput(e.target.value)}
+          className={inputClass}
+          min="0"
+          placeholder="0"
+        />
       </div>
 
       <div>
