@@ -110,7 +110,8 @@ export const printInvoice = (sale) => {
   <title>Facture ${invoiceNumber}</title>
   <style>
     body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #111; margin: 0; background: #fff; }
-    .invoice { max-width: 850px; margin: 0 auto; padding: 24px 36px; }
+    @page { size: A4; margin: 10mm; }
+    .invoice { max-width: 850px; margin: 0 auto; padding: 24px 36px; box-sizing: border-box; display: flex; flex-direction: column; min-height: 100vh; }
     .invoice-header { display: flex; gap: 12px; border-bottom: 2px solid #1d4ed8; padding-bottom: 12px; }
     .logo-column { min-width: 140px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
     .logo-box img { height: 80px; width: auto; }
@@ -142,8 +143,11 @@ export const printInvoice = (sale) => {
     .totals-table .label { background: #f1f5f9; }
     .totals-table .grand-total { background: #1d4ed8; color: #fff; font-size: 15px; }
     .payment { margin: 14px 0; border-top: 1px dashed #475569; padding-top: 10px; }
-    .signature { display: flex; justify-content: space-between; margin-top: 32px; font-weight: 600; }
-    footer { margin-top: 36px; border: 1px solid #94a3b8; padding: 16px; font-size: 12px; line-height: 1.5; text-align: center; }
+    .signature { display: flex; justify-content: space-between; margin-top: 32px; padding-bottom: 130px; font-weight: 600; }
+    footer { margin-top: auto; break-inside: avoid; border: 1px solid #94a3b8; padding: 16px; font-size: 12px; line-height: 1.5; text-align: center; }
+    @media print {
+      .invoice { padding: 0; min-height: 277mm; }
+    }
   </style>
 </head>
 <body>
