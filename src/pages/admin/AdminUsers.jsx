@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { useProductStore } from '../../store/productStore';
-import { normalizeForSearch } from '../../utils/helpers';
+import { Pencil, Plus, ShieldCheck, Store, Trash2, UserCheck, UserX, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useProductStore } from '../../store/productStore';
+import { useAuthStore } from '../../store/authStore';
+import { normalizeForSearch } from '../../utils/helpers';
+import {
+  Badge, Button, Card, EmptyState, Modal, PageHeader, SearchInput, StatCard, inputClass, labelClass,
+} from '../../components/ui';
 
 const EMPTY_FORM = { name: '', email: '', password: '', role: 'seller' };
+const ROLE_LABEL = { admin: 'Administrateur', seller: 'Vendeur' };
 
 export default function AdminUsers() {
   const { users, isLoading, fetchUsers, createUser, updateUser, deleteUser } = useProductStore();
+  const currentUserId = useAuthStore((s) => s.user?.id);
   const [searchTerm, setSearchTerm] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -16,31 +23,29 @@ export default function AdminUsers() {
     fetchUsers().catch(() => {});
   }, [fetchUsers]);
 
+  const term = normalizeForSearch(searchTerm);
   const filtered = users.filter(
-    (u) =>
-      normalizeForSearch(u.name).includes(normalizeForSearch(searchTerm)) ||
-      normalizeForSearch(u.email).includes(normalizeForSearch(searchTerm))
+    (u) => normalizeForSearch(u.name).includes(term) || normalizeForSearch(u.email).includes(term)
   );
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  const closeForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setFormData(EMPTY_FORM);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       if (editingId) {
-        await updateUser(editingId, formData);
+        const { password, ...rest } = formData;
+        await updateUser(editingId, password ? formData : rest);
         toast.success('Utilisateur mis à jour');
       } else {
         await createUser(formData);
         toast.success('Utilisateur créé');
       }
-      resetForm();
+      closeForm();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Erreur');
     }
@@ -50,6 +55,15 @@ export default function AdminUsers() {
     setEditingId(user.id);
     setFormData({ name: user.name, email: user.email, password: '', role: user.role });
     setShowForm(true);
+  };
+
+  const toggleActive = async (user) => {
+    try {
+      await updateUser(user.id, { is_active: !user.is_active });
+      toast.success(user.is_active ? 'Compte désactivé' : 'Compte réactivé');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erreur');
+    }
   };
 
   const handleDelete = async (id) => {
@@ -62,157 +76,153 @@ export default function AdminUsers() {
     }
   };
 
-  const resetForm = () => {
-    setShowForm(false);
-    setEditingId(null);
-    setFormData(EMPTY_FORM);
+  const handleChange = (e) => setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const actions = (user) => {
+    const isSelf = user.id === currentUserId;
+    return (
+      <div className="flex items-center justify-end gap-1">
+        <Button variant="ghost" size="icon" icon={Pencil} onClick={() => handleEdit(user)} title="Modifier" aria-label="Modifier" />
+        {!isSelf && (
+          <Button
+            variant="ghost"
+            size="icon"
+            icon={user.is_active ? UserX : UserCheck}
+            onClick={() => toggleActive(user)}
+            title={user.is_active ? 'Désactiver' : 'Réactiver'}
+            aria-label={user.is_active ? 'Désactiver' : 'Réactiver'}
+          />
+        )}
+        {!isSelf && user.role !== 'admin' && (
+          <Button variant="danger-ghost" size="icon" icon={Trash2} onClick={() => handleDelete(user.id)} title="Supprimer" aria-label="Supprimer" />
+        )}
+      </div>
+    );
   };
 
-  const roleStyle = { admin: 'bg-red-100 text-red-800', seller: 'bg-blue-100 text-blue-800' };
-  const roleLabel = { admin: 'Administrateur', seller: 'Vendeur' };
+  const roleBadge = (user) => <Badge tone={user.role === 'admin' ? 'primary' : 'neutral'}>{ROLE_LABEL[user.role] || user.role}</Badge>;
+  const statusBadge = (user) => <Badge tone={user.is_active ? 'success' : 'danger'}>{user.is_active ? 'Actif' : 'Inactif'}</Badge>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-dark-900">Gestion des Utilisateurs</h1>
-          <p className="text-dark-600 mt-1 text-sm">{users.length} utilisateur(s) enregistré(s)</p>
-        </div>
-        <button
-          onClick={() => { resetForm(); setShowForm(true); }}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition text-sm"
+    <>
+      <PageHeader title="Utilisateurs">
+        <Button
+          icon={Plus}
+          onClick={() => {
+            closeForm();
+            setShowForm(true);
+          }}
         >
-          + Ajouter
-        </button>
+          Ajouter
+        </Button>
+      </PageHeader>
+
+      <div className="grid grid-cols-3 gap-3 sm:gap-4">
+        <StatCard label="Total" value={users.length} icon={Users} />
+        <StatCard label="Admins" value={users.filter((u) => u.role === 'admin').length} icon={ShieldCheck} tone="neutral" />
+        <StatCard label="Vendeurs" value={users.filter((u) => u.role === 'seller').length} icon={Store} tone="success" />
       </div>
+
+      <SearchInput placeholder="Rechercher par nom ou email..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+
+      <Card bodyClassName="" className="overflow-hidden">
+        {filtered.length === 0 ? (
+          <EmptyState icon={Users} title={users.length === 0 ? 'Aucun utilisateur' : 'Aucun résultat'} />
+        ) : (
+          <>
+            <ul className="md:hidden divide-y divide-dark-100">
+              {filtered.map((user) => (
+                <li key={user.id} className="p-4 flex items-center gap-3">
+                  <div className="h-10 w-10 shrink-0 rounded-full bg-primary-50 text-primary-700 font-semibold flex items-center justify-center">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-dark-900 truncate">{user.name}</p>
+                    <p className="text-sm text-dark-500 truncate">{user.email}</p>
+                    <div className="mt-1 flex gap-2">{roleBadge(user)}{statusBadge(user)}</div>
+                  </div>
+                  {actions(user)}
+                </li>
+              ))}
+            </ul>
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-dark-200 bg-dark-50 text-left text-xs font-semibold uppercase tracking-wide text-dark-500">
+                    <th className="py-3 px-4">Utilisateur</th>
+                    <th className="py-3 px-4">Email</th>
+                    <th className="py-3 px-4">Rôle</th>
+                    <th className="py-3 px-4">Statut</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-dark-100">
+                  {filtered.map((user) => (
+                    <tr key={user.id} className="hover:bg-dark-50">
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 shrink-0 rounded-full bg-primary-50 text-primary-700 text-sm font-semibold flex items-center justify-center">
+                            {user.name.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="font-medium text-dark-900">{user.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-dark-600">{user.email}</td>
+                      <td className="py-3 px-4">{roleBadge(user)}</td>
+                      <td className="py-3 px-4">{statusBadge(user)}</td>
+                      <td className="py-2 px-4">{actions(user)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </Card>
 
       {showForm && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-dark-900 mb-4">
-            {editingId ? 'Modifier utilisateur' : 'Nouvel utilisateur'}
-          </h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-dark-700 mb-1">Nom</label>
-                <input type="text" name="name" value={formData.name} onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-dark-900"
-                  required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-dark-700 mb-1">Email</label>
-                <input type="email" name="email" value={formData.email} onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-dark-900"
-                  required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-dark-700 mb-1">
-                  {editingId ? 'Nouveau mot de passe (optionnel)' : 'Mot de passe'}
-                </label>
-                <input type="password" name="password" value={formData.password} onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-dark-900"
-                  required={!editingId} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-dark-700 mb-1">Rôle</label>
-                <select name="role" value={formData.role} onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-dark-900">
-                  <option value="seller">Vendeur</option>
-                  <option value="admin">Administrateur</option>
-                </select>
-              </div>
+        <Modal
+          title={editingId ? "Modifier l'utilisateur" : 'Nouvel utilisateur'}
+          size="md"
+          onClose={closeForm}
+          footer={
+            <>
+              <Button variant="secondary" onClick={closeForm}>Annuler</Button>
+              <Button type="submit" form="user-form" loading={isLoading}>Enregistrer</Button>
+            </>
+          }
+        >
+          <form id="user-form" onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className={labelClass}>Nom</label>
+              <input type="text" name="name" value={formData.name} onChange={handleChange} className={inputClass} required />
             </div>
-            <div className="flex gap-2">
-              <button type="submit" disabled={isLoading}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50 text-sm">
-                {isLoading ? 'Enregistrement...' : 'Enregistrer'}
-              </button>
-              <button type="button" onClick={resetForm}
-                className="px-4 py-2 border border-gray-300 text-dark-700 rounded-lg hover:bg-gray-50 transition text-sm">
-                Annuler
-              </button>
+            <div>
+              <label className={labelClass}>Email</label>
+              <input type="email" name="email" value={formData.email} onChange={handleChange} className={inputClass} required />
+            </div>
+            <div>
+              <label className={labelClass}>{editingId ? 'Nouveau mot de passe (optionnel)' : 'Mot de passe'}</label>
+              <input
+                type="password"
+                name="password"
+                autoComplete="new-password"
+                value={formData.password}
+                onChange={handleChange}
+                className={inputClass}
+                required={!editingId}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Rôle</label>
+              <select name="role" value={formData.role} onChange={handleChange} className={inputClass}>
+                <option value="seller">Vendeur</option>
+                <option value="admin">Administrateur</option>
+              </select>
             </div>
           </form>
-        </div>
+        </Modal>
       )}
-
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-        <input type="text" placeholder="Rechercher par nom ou email..."
-          value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-dark-900" />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-blue-50 rounded-xl border border-blue-200 p-4 flex items-center justify-between">
-          <div><p className="text-sm text-dark-600">Total</p><p className="text-2xl font-bold text-blue-600">{users.length}</p></div>
-          <span className="text-3xl">👥</span>
-        </div>
-        <div className="bg-red-50 rounded-xl border border-red-200 p-4 flex items-center justify-between">
-          <div><p className="text-sm text-dark-600">Administrateurs</p><p className="text-2xl font-bold text-red-600">{users.filter((u) => u.role === 'admin').length}</p></div>
-          <span className="text-3xl">👑</span>
-        </div>
-        <div className="bg-green-50 rounded-xl border border-green-200 p-4 flex items-center justify-between">
-          <div><p className="text-sm text-dark-600">Vendeurs</p><p className="text-2xl font-bold text-green-600">{users.filter((u) => u.role === 'seller').length}</p></div>
-          <span className="text-3xl">🏪</span>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          {filtered.length === 0 ? (
-            <div className="py-12 text-center text-dark-500">
-              {users.length === 0 ? 'Aucun utilisateur.' : 'Aucun résultat pour cette recherche.'}
-            </div>
-          ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-3 md:px-6 py-3 text-left text-sm font-semibold text-dark-900">Utilisateur</th>
-                  <th className="px-3 md:px-6 py-3 text-left text-sm font-semibold text-dark-900 hidden md:table-cell">Email</th>
-                  <th className="px-3 md:px-6 py-3 text-left text-sm font-semibold text-dark-900">Rôle</th>
-                  <th className="px-3 md:px-6 py-3 text-left text-sm font-semibold text-dark-900 hidden sm:table-cell">Statut</th>
-                  <th className="px-3 md:px-6 py-3 text-left text-sm font-semibold text-dark-900">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((user) => (
-                  <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                    <td className="px-3 md:px-6 py-3 md:py-4">
-                      <div className="flex items-center space-x-2 md:space-x-3">
-                        <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-white font-bold text-sm">{user.name.charAt(0).toUpperCase()}</span>
-                        </div>
-                        <p className="font-medium text-dark-900 text-sm">{user.name}</p>
-                      </div>
-                    </td>
-                    <td className="px-3 md:px-6 py-3 md:py-4 text-dark-600 text-sm hidden md:table-cell">{user.email}</td>
-                    <td className="px-3 md:px-6 py-3 md:py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${roleStyle[user.role] || 'bg-gray-100 text-gray-800'}`}>
-                        {roleLabel[user.role] || user.role}
-                      </span>
-                    </td>
-                    <td className="px-3 md:px-6 py-3 md:py-4 text-dark-600 text-sm hidden sm:table-cell">
-                      {user.is_active ? '✅ Actif' : '❌ Inactif'}
-                    </td>
-                    <td className="px-3 md:px-6 py-3 md:py-4">
-                      <div className="flex items-center gap-1 md:gap-2">
-                        <button onClick={() => handleEdit(user)}
-                          className="px-2 md:px-3 py-1 text-blue-600 hover:bg-blue-50 rounded transition text-xs md:text-sm">
-                          ✏️ <span className="hidden sm:inline">Modifier</span>
-                        </button>
-                        <button onClick={() => handleDelete(user.id)}
-                          className="px-2 md:px-3 py-1 text-red-600 hover:bg-red-50 rounded transition text-xs md:text-sm">
-                          🗑️ <span className="hidden sm:inline">Supprimer</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

@@ -3,6 +3,21 @@ export const normalizeForSearch = (str) => {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 };
 
+export const PAYMENT_LABELS = {
+  cash: 'Espèces',
+  card: 'Carte bancaire',
+  transfer: 'Virement',
+  check: 'Chèque',
+  paiement_marchand: 'Paiement marchand',
+};
+
+export const formatDateTime = (value) =>
+  value
+    ? new Date(value).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : '—';
+
+export const stockTone = (qty) => (qty === 0 ? 'danger' : qty < 10 ? 'warning' : 'success');
+
 export const getProductCodes = (product) => {
   if (Array.isArray(product?.barcodes) && product.barcodes.length > 0) return product.barcodes;
   return product?.barcode ? [product.barcode] : [];
@@ -55,8 +70,7 @@ export const printInvoice = (sale) => {
   const items = sale.items || [];
   const invoiceNumber = sale.invoice_number || generateInvoiceNumber();
 
-  const paymentLabels = { cash: 'Espèces', card: 'Carte bancaire', transfer: 'Virement', check: 'Chèque', paiement_marchand: 'Paiement marchand' };
-  const paymentLabel = paymentLabels[sale.payment_method] || sale.payment_method || '—';
+  const paymentLabel = PAYMENT_LABELS[sale.payment_method] || sale.payment_method || '—';
 
   const clientSource = {
     name: sale.client?.name || sale.client_name,

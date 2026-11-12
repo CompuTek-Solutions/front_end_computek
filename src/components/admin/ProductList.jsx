@@ -1,7 +1,10 @@
 import React from 'react';
-import { useProductStore } from '../../store/productStore';
-import { formatCurrency, getProductCodes } from '../../utils/helpers';
+import { Package, Pencil, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useProductStore } from '../../store/productStore';
+import { formatCurrency, getProductCodes, stockTone } from '../../utils/helpers';
+import CodeList from './CodeList';
+import { Badge, Button, EmptyState } from '../ui';
 
 export default function ProductList({ products, onEdit }) {
   const { deleteProduct, inventory } = useProductStore();
@@ -16,115 +19,70 @@ export default function ProductList({ products, onEdit }) {
     }
   };
 
-  const getInventoryQuantity = (productId) => {
-    const item = inventory.find((i) => i.product_id === productId);
-    return item?.quantity_on_hand ?? 0;
-  };
+  const stockOf = (productId) => inventory.find((i) => i.product_id === productId)?.quantity_on_hand ?? 0;
 
   if (products.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <span className="text-2xl">📦</span>
-        </div>
-        <h3 className="text-lg font-medium text-dark-900">Aucun produit trouvé</h3>
-      </div>
-    );
+    return <EmptyState icon={Package} title="Aucun produit trouvé" />;
   }
 
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full">
-        <thead>
-          <tr className="border-b border-gray-200 bg-gray-50">
-            <th className="text-left py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm">Nom</th>
-            <th className="text-left py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm hidden md:table-cell">Catégorie</th>
-            <th className="text-left py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm hidden lg:table-cell">Codes</th>
-            <th className="text-left py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm">Prix</th>
-            <th className="text-center py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm">Stock</th>
-            <th className="text-center py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {products.map((product) => {
-            const stockQuantity = getInventoryQuantity(product.id);
-            const isLowStock = stockQuantity < 10;
-
-            return (
-              <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                <td className="py-3 px-3 md:px-6">
-                  <div className="flex items-center space-x-2 md:space-x-3">
-                    <div className="w-8 h-8 md:w-10 md:h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-blue-700 font-semibold text-sm" translate="no">
-                        {product.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-dark-900 text-sm truncate">{product.name}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="py-3 px-3 md:px-6 hidden md:table-cell">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                    {product.category || 'Non catégorisé'}
-                  </span>
-                </td>
-                <td className="py-3 px-3 md:px-6 hidden lg:table-cell">
-                  <CodeList codes={getProductCodes(product)} />
-                </td>
-                <td className="py-3 px-3 md:px-6">
-                  <span className="font-semibold text-primary-600 text-sm">
-                    {formatCurrency(product.price_selling)}
-                  </span>
-                </td>
-                <td className="py-3 px-3 md:px-6 text-center">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    isLowStock
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-green-100 text-green-800'
-                  }`}>
-                    {stockQuantity}
-                  </span>
-                </td>
-                <td className="py-3 px-3 md:px-6 text-center">
-                  <div className="flex items-center justify-center gap-1 md:gap-3">
-                    <button
-                      onClick={() => onEdit(product)}
-                      className="px-2 md:px-4 py-1.5 md:py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-sm text-xs md:text-sm"
-                      title="Modifier"
-                    >
-                      ✏️ <span className="hidden sm:inline">Éditer</span>
-                    </button>
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      className="px-2 md:px-4 py-1.5 md:py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors shadow-sm text-xs md:text-sm"
-                      title="Supprimer"
-                    >
-                      🗑️ <span className="hidden sm:inline">Supprimer</span>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+  const actions = (product) => (
+    <div className="flex items-center justify-end gap-1">
+      <Button variant="ghost" size="icon" icon={Pencil} onClick={() => onEdit(product)} title="Modifier" aria-label="Modifier" />
+      <Button variant="danger-ghost" size="icon" icon={Trash2} onClick={() => handleDelete(product.id)} title="Supprimer" aria-label="Supprimer" />
     </div>
   );
-}
 
-export function CodeList({ codes }) {
-  if (codes.length === 0) {
-    return <span className="text-xs text-dark-400">—</span>;
-  }
   return (
-    <div className="flex flex-wrap gap-1 max-w-xs">
-      {codes.slice(0, 3).map((code) => (
-        <code key={code} className="text-xs bg-gray-100 px-2 py-0.5 rounded font-mono">{code}</code>
-      ))}
-      {codes.length > 3 && (
-        <span className="text-xs text-dark-500" title={codes.slice(3).join(', ')}>+{codes.length - 3}</span>
-      )}
-    </div>
+    <>
+      <ul className="md:hidden divide-y divide-dark-100">
+        {products.map((product) => {
+          const qty = stockOf(product.id);
+          return (
+            <li key={product.id} className="p-4 flex gap-3">
+              <div className="min-w-0 flex-1 space-y-1">
+                <p className="font-medium text-dark-900">{product.name}</p>
+                <p className="text-sm font-semibold text-primary-700">{formatCurrency(product.price_selling)}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={stockTone(qty)}>Stock : {qty}</Badge>
+                  {product.category && <Badge>{product.category}</Badge>}
+                </div>
+                <CodeList codes={getProductCodes(product)} />
+              </div>
+              {actions(product)}
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-dark-200 bg-dark-50 text-left text-xs font-semibold uppercase tracking-wide text-dark-500">
+              <th className="py-3 px-4">Nom</th>
+              <th className="py-3 px-4">Catégorie</th>
+              <th className="py-3 px-4 hidden lg:table-cell">Codes</th>
+              <th className="py-3 px-4 text-right">Prix</th>
+              <th className="py-3 px-4 text-center">Stock</th>
+              <th className="py-3 px-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-dark-100">
+            {products.map((product) => {
+              const qty = stockOf(product.id);
+              return (
+                <tr key={product.id} className="hover:bg-dark-50">
+                  <td className="py-3 px-4 font-medium text-dark-900">{product.name}</td>
+                  <td className="py-3 px-4 text-dark-600">{product.category || '—'}</td>
+                  <td className="py-3 px-4 hidden lg:table-cell"><CodeList codes={getProductCodes(product)} /></td>
+                  <td className="py-3 px-4 text-right font-semibold text-dark-900 whitespace-nowrap">{formatCurrency(product.price_selling)}</td>
+                  <td className="py-3 px-4 text-center"><Badge tone={stockTone(qty)}>{qty}</Badge></td>
+                  <td className="py-2 px-4">{actions(product)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
