@@ -124,10 +124,8 @@ export default function AdminInvoices() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-dark-900">Factures</h1>
-        <p className="text-dark-600 mt-1">Liste de toutes les factures générées</p>
       </div>
 
-      {/* Filtres */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div>
@@ -215,14 +213,12 @@ export default function AdminInvoices() {
         </div>
       </div>
 
-      {/* Tableau */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           {totalCount === 0 ? (
             <div className="py-12 text-center">
               <span className="text-4xl">🧾</span>
               <p className="text-dark-500 mt-3">Aucune facture trouvée</p>
-              <p className="text-dark-400 text-sm mt-1">Les factures sont générées automatiquement à chaque vente</p>
             </div>
           ) : (
             <table className="w-full">

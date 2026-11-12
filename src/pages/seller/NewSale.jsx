@@ -1,11 +1,11 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useProductStore } from '../../store/productStore';
 import BarcodeScanner from '../../components/seller/BarcodeScanner';
-import { printInvoice, formatCurrency, normalizeForSearch } from '../../utils/helpers';
+import { printInvoice, formatCurrency, normalizeForSearch, getProductCodes, productMatchesSearch } from '../../utils/helpers';
 import toast from 'react-hot-toast';
 
 export default function SellerNewSale() {
-  const { products, addSale, clients, fetchClients, addClient, fetchProducts, fetchInventory, getInventoryQuantity } = useProductStore();
+  const { products, addSale, clients, fetchClients, addClient, fetchProducts, fetchInventory, getInventoryQuantity, getProductByBarcode } = useProductStore();
   const [cartItems, setCartItems] = useState([]);
   const [showScanner, setShowScanner] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -71,7 +71,7 @@ export default function SellerNewSale() {
             : item
         );
       }
-      const price = product.price_selling ?? product.price;
+      const price = Number(product.price_selling) || 0;
       return [
         ...prevItems,
         {
@@ -88,52 +88,39 @@ export default function SellerNewSale() {
   }, [getInventoryQuantity]);
 
   const addProductByBarcode = useCallback(async (rawBarcode) => {
-    try {
-      // Nettoyer le barcode (supprimer les espaces et caractères spéciaux)
-      const barcode = (rawBarcode || '').trim().toUpperCase();
-      
-      // Vérifier que le barcode n'est pas vide
-      if (!barcode) {
-        toast.error('Code-barres invalide');
+    const barcode = (rawBarcode || '').trim().toUpperCase();
+    if (!barcode) return;
+
+    const now = Date.now();
+    if (barcode === lastScannedBarcode && now - lastScanTime < 500) return;
+    setLastScannedBarcode(barcode);
+    setLastScanTime(now);
+
+    let product = products.find((p) =>
+      getProductCodes(p).some((code) => code.trim().toUpperCase() === barcode)
+    );
+
+    if (!product) {
+      try {
+        product = await getProductByBarcode(barcode);
+      } catch {
+        toast.error(`Aucun produit pour le code "${barcode}"`);
         return;
       }
-
-      // Ignorer les scans en double rapides (moins de 500ms)
-      const now = Date.now();
-      if (barcode === lastScannedBarcode && now - lastScanTime < 500) {
-        console.log('Scan en double ignoré:', barcode);
-        return;
-      }
-      
-      setLastScannedBarcode(barcode);
-      setLastScanTime(now);
-
-      // Chercher le produit par code-barres (comparaison normalisée)
-      const product = products.find((p) => (p.barcode || '').trim().toUpperCase() === barcode);
-      
-      if (!product) {
-        console.warn('Produit non trouvé pour barcode:', barcode);
-        console.log('Produits disponibles:', products.map(p => ({ id: p.id, name: p.name, barcode: p.barcode })));
-        toast.error(`Produit avec code-barres "${barcode}" non trouvé`);
-        return;
-      }
-
-      console.log('Produit trouvé:', product.name, 'ID:', product.id);
-
-      // Vérifier le stock avant d'ajouter
-      const stock = getInventoryQuantity(product.id);
-      if (stock <= 0) {
-        toast.error(`"${product.name}" est en rupture de stock`);
-        return;
-      }
-
-      // Ajouter au panier
-      addToCart(product, 1);
-    } catch (err) {
-      console.error('Erreur lors de la recherche du produit:', err);
-      toast.error('Erreur lors du scan du code-barres');
     }
-  }, [products, addToCart, getInventoryQuantity, lastScannedBarcode, lastScanTime]);
+
+    addToCart(product, 1);
+  }, [products, addToCart, getProductByBarcode, lastScannedBarcode, lastScanTime]);
+
+  const resetSale = () => {
+    setCartItems([]);
+    setDiscountMode('percent');
+    setDiscountPercentInput('');
+    setDiscountAmountInput('');
+    setNotes('');
+    setPaymentMethod('cash');
+    setSelectedClientId('');
+  };
 
   const handleCompleteSale = async () => {
     if (cartItems.length === 0) {
@@ -143,68 +130,38 @@ export default function SellerNewSale() {
     for (const item of cartItems) {
       const stock = getInventoryQuantity(item.productId);
       if (item.quantity > stock) {
-        toast.error(`Stock insuffisant pour "${item.name}". Disponible: ${stock}`);
+        toast.error(`Stock insuffisant pour "${item.name}". Disponible : ${stock}`);
         return;
       }
     }
 
-    const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
-    const numericPercent = Math.min(100, Math.max(0, parseFloat(discountPercentInput)));
-    const numericAmount = Math.max(0, parseFloat(discountAmountInput));
-    const discountPercent = Number.isFinite(numericPercent) ? numericPercent : 0;
-    const enteredAmount = Number.isFinite(numericAmount) ? numericAmount : 0;
-    const discountAmount = discountMode === 'percent'
-      ? (subtotal * discountPercent) / 100
-      : Math.min(enteredAmount, subtotal);
-    const derivedPercent = subtotal > 0 ? (discountAmount / subtotal) * 100 : 0;
-    const total = subtotal - discountAmount;
-
-    setCartItems([]);
-    setDiscountMode('percent');
-    setDiscountPercentInput('');
-    setDiscountAmountInput('');
-    setNotes('');
-    setPaymentMethod('cash');
-    setSelectedClientId('');
+    const selectedClient = clients.find((c) => c.id === selectedClientId);
     const sale = {
       items: cartItems,
-      subtotal,
       discount: discountAmount,
-      discount_amount: discountAmount,
-      discount_percent: derivedPercent,
-      total,
       paymentMethod,
       notes,
-      status: 'completed',
       client_id: selectedClientId || null,
     };
 
     setIsGeneratingInvoice(true);
     try {
-      await addSale(sale);
+      const created = await addSale(sale);
       fetchInventory().catch(() => {});
       printInvoice({
-        ...sale,
-        payment_method: sale.paymentMethod,
-        discount: sale.discount,
-        discount_percent: derivedPercent,
-        discount_amount: discountAmount,
+        ...created,
+        subtotal,
+        discount_percent: derivedDiscountPercent,
+        client: selectedClient,
         items: cartItems.map((i) => ({ name: i.name, quantity: i.quantity, unit_price: i.price, subtotal: i.total })),
       });
-      toast.success('Vente enregistrée. Fenêtre d\'impression ouverte pour la facture.');
+      toast.success('Vente enregistrée');
+      resetSale();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Erreur lors de l\'enregistrement de la vente');
-      return;
+      toast.error(err.response?.data?.error || "Erreur lors de l'enregistrement de la vente");
     } finally {
       setIsGeneratingInvoice(false);
     }
-    setCartItems([]);
-    setDiscountMode('percent');
-    setDiscountPercentInput('');
-    setDiscountAmountInput('');
-    setNotes('');
-    setPaymentMethod('cash');
-    setSelectedClientId('');
   };
 
   const handleAddClient = async (e) => {
@@ -230,11 +187,7 @@ export default function SellerNewSale() {
   const filteredProducts = useMemo(
     () => {
       const normalizedSearchTerm = normalizeForSearch(searchTerm);
-      return products.filter(
-        (product) =>
-          normalizeForSearch(product.name).includes(normalizedSearchTerm) ||
-          normalizeForSearch(product.barcode || '').includes(normalizedSearchTerm)
-      );
+      return products.filter((product) => productMatchesSearch(product, normalizedSearchTerm));
     },
     [products, searchTerm]
   );
@@ -296,7 +249,6 @@ export default function SellerNewSale() {
 
   return (
     <div className="flex flex-col h-full bg-gray-100 -m-6">
-      {/* Camera Scanner Modal */}
       {showScanner && (
         <BarcodeScanner
           onDetected={handleCameraScan}
@@ -304,7 +256,6 @@ export default function SellerNewSale() {
         />
       )}
 
-      {/* ── TOP BAR ─────────────────────────────────────────── */}
       <div className="bg-[#0369a1] text-white px-3 md:px-6 py-2 md:py-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2 md:gap-3">
           <span className="text-xl md:text-2xl">🛒</span>
@@ -325,7 +276,6 @@ export default function SellerNewSale() {
         </div>
       </div>
 
-      {/* ── SCAN BAR ─────────────────────────────────────────── */}
       <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-3 flex-shrink-0 shadow-sm">
         <button
           onClick={() => setShowScanner(true)}
@@ -370,7 +320,6 @@ export default function SellerNewSale() {
         </button>
       </div>
 
-      {/* ── PRODUCT SEARCH PANEL (repliable) ─────────────────── */}
       {showProductPanel && (
         <div className="bg-white border-b border-gray-200 px-6 py-4 flex-shrink-0">
           <div className="mb-3">
@@ -399,7 +348,7 @@ export default function SellerNewSale() {
                   }`}
                 >
                   <p className="font-semibold text-dark-900 text-xs leading-tight line-clamp-2">{product.name}</p>
-                  <p className="text-primary-600 font-bold text-sm mt-1">{formatCurrency(product.price_selling ?? product.price)}</p>
+                  <p className="text-primary-600 font-bold text-sm mt-1">{formatCurrency(product.price_selling)}</p>
                   <p className={`text-xs mt-0.5 font-medium ${outOfStock ? 'text-red-500' : 'text-green-600'}`}>
                     {outOfStock ? 'Rupture' : `Stock: ${stock}`}
                   </p>
@@ -438,12 +387,9 @@ export default function SellerNewSale() {
         </div>
       )}
 
-      {/* ── MAIN CONTENT ─────────────────────────────────────── */}
       <div className="flex-1 flex flex-col md:flex-row gap-0 min-h-0 overflow-hidden">
 
-        {/* LEFT: Panier (style reçu) */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden min-h-0" style={{minHeight: '40vh'}}>
-          {/* Table header */}
           <div className="bg-gray-200 px-4 py-2 grid grid-cols-12 gap-2 text-xs font-semibold text-dark-700 uppercase tracking-wide flex-shrink-0">
             <div className="col-span-5">Désignation</div>
             <div className="col-span-2 text-center">P.U.</div>
@@ -452,8 +398,6 @@ export default function SellerNewSale() {
             <div className="col-span-1"></div>
           </div>
 
-          {/* Items list */}
-        {/* Items list */}
 <div className="flex-1 overflow-y-auto bg-white">
   {cartItems.length === 0 ? (
     <div className="flex flex-col items-center justify-center h-full text-dark-400 py-16">
@@ -471,7 +415,6 @@ export default function SellerNewSale() {
           idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
         }`}
       >
-        {/* Desktop */}
         <div className="hidden md:grid grid-cols-12 gap-2 px-4 py-3 items-center">
           <div className="col-span-5">
             <p className="font-medium text-dark-900 text-sm leading-tight">
@@ -533,7 +476,6 @@ export default function SellerNewSale() {
           </div>
         </div>
 
-        {/* Mobile */}
         <div className="md:hidden p-3 space-y-3">
           <div className="flex justify-between items-start gap-2">
             <div className="flex-1">
@@ -601,7 +543,6 @@ export default function SellerNewSale() {
   )}
 </div>
 
-          {/* Totals bar at bottom of cart */}
           {cartItems.length > 0 && (
             <div className="bg-gray-100 border-t border-gray-300 px-4 py-2 flex-shrink-0 flex justify-end gap-8 text-sm">
               <span className="text-dark-600">Sous-total : <span className="font-semibold text-dark-900">{formatCurrency(subtotal)}</span></span>
@@ -618,14 +559,12 @@ export default function SellerNewSale() {
           )}
         </div>
 
-        {/* RIGHT: Panneau paiement */}
         <div className="w-full md:w-80 flex-shrink-0 flex flex-col bg-white border-t md:border-t-0 md:border-l border-gray-200 overflow-y-auto max-h-96 md:max-h-none">
           <div className="p-4 border-b border-gray-200 bg-gray-50">
             <h3 className="font-bold text-dark-900 text-base">Finaliser la vente</h3>
           </div>
 
           <div className="flex-1 p-4 space-y-4">
-            {/* Remise */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-semibold text-dark-700 uppercase tracking-wide">Remise</label>
@@ -673,7 +612,6 @@ export default function SellerNewSale() {
               )}
             </div>
 
-            {/* Mode paiement */}
             <div>
               <label className="block text-xs font-semibold text-dark-700 mb-1 uppercase tracking-wide">Mode de paiement</label>
               <div className="grid grid-cols-2 gap-2">
@@ -697,7 +635,6 @@ export default function SellerNewSale() {
               </div>
             </div>
 
-            {/* Client */}
             <div>
               <label className="block text-xs font-semibold text-dark-700 mb-1 uppercase tracking-wide">Client (optionnel)</label>
               <div className="space-y-2">
@@ -800,7 +737,6 @@ export default function SellerNewSale() {
               </div>
             </div>
 
-            {/* Notes */}
             <div>
               <label className="block text-xs font-semibold text-dark-700 mb-1 uppercase tracking-wide">Notes</label>
               <textarea
@@ -813,7 +749,6 @@ export default function SellerNewSale() {
             </div>
           </div>
 
-          {/* Total recap + Valider button */}
           <div className="p-4 border-t border-gray-200 bg-gray-50 space-y-3 flex-shrink-0">
             <div className="space-y-1 text-sm">
               <div className="flex justify-between text-dark-600">
@@ -853,7 +788,7 @@ export default function SellerNewSale() {
             {cartItems.length > 0 && (
               <button
                 type="button"
-                onClick={() => { setCartItems([]); setDiscount(0); setNotes(''); setPaymentMethod('cash'); setSelectedClientId(''); focusBarcodeField(); }}
+                onClick={() => { resetSale(); focusBarcodeField(); }}
                 className="w-full py-2 text-sm text-red-500 hover:text-red-700 font-medium"
               >
                 🗑️ Vider le panier

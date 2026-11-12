@@ -1,15 +1,18 @@
 import React from 'react';
 import { useProductStore } from '../../store/productStore';
-import { formatCurrency } from '../../utils/helpers';
+import { formatCurrency, getProductCodes } from '../../utils/helpers';
 import toast from 'react-hot-toast';
 
 export default function ProductList({ products, onEdit }) {
   const { deleteProduct, inventory } = useProductStore();
 
-  const handleDelete = (id) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce produit?')) {
-      deleteProduct(id);
+  const handleDelete = async (id) => {
+    if (!window.confirm('Supprimer ce produit ?')) return;
+    try {
+      await deleteProduct(id);
       toast.success('Produit supprimé');
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Erreur lors de la suppression');
     }
   };
 
@@ -24,8 +27,7 @@ export default function ProductList({ products, onEdit }) {
         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <span className="text-2xl">📦</span>
         </div>
-        <h3 className="text-lg font-medium text-dark-900 mb-2">Aucun produit trouvé</h3>
-        <p className="text-dark-500">Commencez par ajouter votre premier produit</p>
+        <h3 className="text-lg font-medium text-dark-900">Aucun produit trouvé</h3>
       </div>
     );
   }
@@ -37,14 +39,14 @@ export default function ProductList({ products, onEdit }) {
           <tr className="border-b border-gray-200 bg-gray-50">
             <th className="text-left py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm">Nom</th>
             <th className="text-left py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm hidden md:table-cell">Catégorie</th>
-            <th className="text-left py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm hidden lg:table-cell">Code-barres</th>
+            <th className="text-left py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm hidden lg:table-cell">Codes</th>
             <th className="text-left py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm">Prix</th>
             <th className="text-center py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm">Stock</th>
             <th className="text-center py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm">Actions</th>
           </tr>
         </thead>
         <tbody>
-          {products.map((product, index) => {
+          {products.map((product) => {
             const stockQuantity = getInventoryQuantity(product.id);
             const isLowStock = stockQuantity < 10;
 
@@ -59,7 +61,6 @@ export default function ProductList({ products, onEdit }) {
                     </div>
                     <div className="min-w-0">
                       <p className="font-medium text-dark-900 text-sm truncate">{product.name}</p>
-                      <p className="text-xs text-dark-500 hidden sm:block">ID: {String(product.id).slice(0, 8)}</p>
                     </div>
                   </div>
                 </td>
@@ -69,13 +70,11 @@ export default function ProductList({ products, onEdit }) {
                   </span>
                 </td>
                 <td className="py-3 px-3 md:px-6 hidden lg:table-cell">
-                  <code className="text-xs bg-gray-100 px-2 py-1 rounded font-mono">
-                    {product.barcode || 'Sans code-barres'}
-                  </code>
+                  <CodeList codes={getProductCodes(product)} />
                 </td>
                 <td className="py-3 px-3 md:px-6">
                   <span className="font-semibold text-primary-600 text-sm">
-                    {formatCurrency(product.price_selling ?? product.price)}
+                    {formatCurrency(product.price_selling)}
                   </span>
                 </td>
                 <td className="py-3 px-3 md:px-6 text-center">
@@ -110,6 +109,22 @@ export default function ProductList({ products, onEdit }) {
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+export function CodeList({ codes }) {
+  if (codes.length === 0) {
+    return <span className="text-xs text-dark-400">—</span>;
+  }
+  return (
+    <div className="flex flex-wrap gap-1 max-w-xs">
+      {codes.slice(0, 3).map((code) => (
+        <code key={code} className="text-xs bg-gray-100 px-2 py-0.5 rounded font-mono">{code}</code>
+      ))}
+      {codes.length > 3 && (
+        <span className="text-xs text-dark-500" title={codes.slice(3).join(', ')}>+{codes.length - 3}</span>
+      )}
     </div>
   );
 }

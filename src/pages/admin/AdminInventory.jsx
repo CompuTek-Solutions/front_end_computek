@@ -1,18 +1,19 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import { useProductStore } from '../../store/productStore';
-import { formatCurrency, normalizeForSearch } from '../../utils/helpers';
+import { formatCurrency, normalizeForSearch, getProductCodes, productMatchesSearch } from '../../utils/helpers';
+import { CodeList } from '../../components/admin/ProductList';
 import BarcodeLabelsGenerator from '../../components/admin/BarcodeLabelsGenerator';
 import Pagination from '../../components/common/Pagination';
 import toast from 'react-hot-toast';
 
 export default function AdminInventory() {
   const { products, inventory, fetchProducts, fetchInventory, updateInventoryQuantity } = useProductStore();
-  const [sortBy, setSortBy] = React.useState('name');
-  const [sortOrder, setSortOrder] = React.useState('asc');
-  const [filterStock, setFilterStock] = React.useState('all');
+  const [sortBy, setSortBy] = useState('name');
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [filterStock, setFilterStock] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [currentPage, setCurrentPage] = React.useState(1);
-  const [itemsPerPage, setItemsPerPage] = React.useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [draftQty, setDraftQty] = useState({});
   const [savingId, setSavingId] = useState(null);
   const [showBarcodeGenerator, setShowBarcodeGenerator] = useState(false);
@@ -27,17 +28,13 @@ export default function AdminInventory() {
     let list = products.map((product) => ({
       id: product.id,
       name: product.name,
-      barcode: product.barcode,
-      price: product.price_selling ?? product.price,
+      codes: getProductCodes(product),
+      price: Number(product.price_selling) || 0,
       quantity: inventory.find((i) => i.product_id === product.id)?.quantity_on_hand ?? 0,
     }));
 
     if (normalizedSearchTerm) {
-      list = list.filter(
-        (item) =>
-          normalizeForSearch(item.name).includes(normalizedSearchTerm) ||
-          normalizeForSearch(item.barcode || '').includes(normalizedSearchTerm)
-      );
+      list = list.filter((item) => productMatchesSearch({ name: item.name, barcodes: item.codes }, normalizedSearchTerm));
     }
 
     if (filterStock === 'low') {
@@ -57,7 +54,6 @@ export default function AdminInventory() {
       return Number.isFinite(num) ? num : 0;
     };
 
-    // Tri des produits
     return list.sort((a, b) => {
       switch (sortBy) {
         case 'price':
@@ -76,7 +72,6 @@ export default function AdminInventory() {
     });
   }, [products, inventory, sortBy, sortOrder, filterStock, searchTerm]);
 
-  // Pagination logic
   const paginatedInventoryList = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
@@ -87,7 +82,6 @@ export default function AdminInventory() {
     return Math.ceil(inventoryList.length / itemsPerPage);
   }, [inventoryList.length, itemsPerPage]);
 
-  // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [filterStock, sortBy, sortOrder, itemsPerPage, searchTerm]);
@@ -112,10 +106,8 @@ export default function AdminInventory() {
 
   const handleSortChange = (newSortBy) => {
     if (sortBy === newSortBy) {
-      // Inverser l'ordre si on clique sur le même critère
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
-      // Nouveau critère, ordre ascendant par défaut
       setSortBy(newSortBy);
       setSortOrder('asc');
     }
@@ -127,35 +119,31 @@ export default function AdminInventory() {
 
   const handleItemsPerPageChange = (newItemsPerPage) => {
     setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1); // Reset to first page
+    setCurrentPage(1);
   };
 
   return (
     <div className="space-y-6" translate="no">
-      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-dark-900">Gestion de l'Inventaire</h1>
-          <p className="text-dark-600 mt-1 text-sm md:text-base">Suivi et analyse du stock en temps réel</p>
         </div>
-        {/* <button
+        <button
           onClick={() => setShowBarcodeGenerator(true)}
           className="px-4 md:px-6 py-2 md:py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all flex items-center space-x-2 font-medium shadow-sm text-sm md:text-base"
         >
           <span>🏷️</span>
           <span>Imprimer étiquettes</span>
-        </button> */}
+        </button>
       </div>
 
-      {/* Barcode Generator Modal */}
       {showBarcodeGenerator && (
         <BarcodeLabelsGenerator
-          products={products.filter(p => p.barcode) || []}
+          products={products.filter((p) => getProductCodes(p).length > 0)}
           onClose={() => setShowBarcodeGenerator(false)}
         />
       )}
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
@@ -206,13 +194,12 @@ export default function AdminInventory() {
         </div>
       </div>
 
-      {/* Filters and Controls */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6" translate="no">
         <div className="flex flex-col lg:flex-row lg:items-center gap-4">
           <div className="flex-1">
             <input
               type="text"
-              placeholder="Rechercher par nom ou code-barres..."
+              placeholder="Rechercher par nom ou code..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white text-dark-900 placeholder-gray-500 text-sm md:text-base"
@@ -220,7 +207,6 @@ export default function AdminInventory() {
             />
           </div>
 
-          {/* Stock Filter */}
           <div className="flex items-center gap-2 flex-shrink-0">
             <span className="text-sm text-dark-500">Stock:</span>
             <button
@@ -255,13 +241,7 @@ export default function AdminInventory() {
             </button>
           </div>
           
-          {/* Results count */}
-          <div className="flex items-center gap-2 text-sm text-dark-500 flex-shrink-0">
-            <span>🔍</span>
-            <span>{inventoryList.length} résultat(s)</span>
-          </div>
 
-          {/* Sort Buttons */}
           <div className="flex items-center gap-2 flex-shrink-0">
             <span className="text-sm text-dark-500">Trier par:</span>
             <button
@@ -310,7 +290,6 @@ export default function AdminInventory() {
             </button>
           </div>
           
-          {/* Results Count */}
           <div className="flex items-center space-x-2 text-dark-500 flex-shrink-0 lg:ml-auto">
             <span>📊</span>
             <span className="text-sm">{inventoryList.length} résultat(s)</span>
@@ -321,14 +300,13 @@ export default function AdminInventory() {
         </div>
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
                 <th className="text-left py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm">Produit</th>
-                <th className="text-left py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm hidden lg:table-cell">Code-barres</th>
+                <th className="text-left py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm hidden lg:table-cell">Codes</th>
                 <th className="text-right py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm hidden sm:table-cell">Prix unitaire</th>
                 <th className="text-center py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm">Qté</th>
                 <th className="text-right py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm hidden md:table-cell">Valeur stock</th>
@@ -338,7 +316,7 @@ export default function AdminInventory() {
             <tbody>
               {inventoryList.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="py-12 text-center">
+                  <td colSpan="6" className="py-12 text-center">
                     <div className="text-dark-500">
                       <span className="text-3xl">📦</span>
                       <p className="mt-2">Aucun produit trouvé</p>
@@ -361,7 +339,7 @@ export default function AdminInventory() {
                       </div>
                     </td>
                     <td className="py-3 px-3 md:px-6 text-dark-700 hidden lg:table-cell">
-                      <code className="bg-gray-100 px-2 py-1 rounded text-xs">{item.barcode || 'Sans code-barres'}</code>
+                      <CodeList codes={item.codes} />
                     </td>
                     <td className="py-3 px-3 md:px-6 text-right font-medium text-dark-900 text-sm hidden sm:table-cell">{formatCurrency(item.price)}</td>
                     <td className="py-3 px-3 md:px-6 text-center">
@@ -424,7 +402,6 @@ export default function AdminInventory() {
         </div>
       </div>
 
-      {/* Pagination */}
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}

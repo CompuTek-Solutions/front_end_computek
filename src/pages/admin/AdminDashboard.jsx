@@ -49,13 +49,10 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-dark-900 mb-2">Tableau de Bord Administrateur</h1>
-          <p className="text-dark-600">Aperçu général de votre activité commerciale</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-dark-900">Tableau de Bord Administrateur</h1>
         </div>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
@@ -130,9 +127,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Top Selling Products */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-dark-900">Top 5 Produits Vendus</h3>
@@ -184,7 +179,6 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          {/* Low Stock Alert */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-dark-900">Produits en Stock Faible</h3>

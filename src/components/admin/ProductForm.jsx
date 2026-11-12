@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useProductStore } from '../../store/productStore';
 import { validateProduct } from '../../utils/validation';
-import { generateBarcode } from '../../utils/barcodeUtils';
+import { formatCurrency, getProductCodes } from '../../utils/helpers';
 import { toast } from 'react-hot-toast';
 import BarcodeScanner from '../seller/BarcodeScanner';
 
@@ -13,415 +13,168 @@ const PRODUCT_CATEGORIES = [
   'Sécurité électrique',
 ];
 
+const inputClass = (hasError) =>
+  `w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-dark-900 ${
+    hasError ? 'border-red-500 bg-red-50' : 'border-gray-300'
+  }`;
+
 export default function ProductForm({ product, onClose }) {
-  const { addProduct, updateProduct, inventory, checkProductExists } = useProductStore();
-  const [formData, setFormData] = useState(
-    product ? {
-      name: product.name || '',
-      description: product.description || '',
-      price: String(product.price_selling || product.price || ''),
-      category: product.category || '',
-      barcode: product.barcode || '',
-      quantity: '',
-    } : {
-      name: '',
-      description: '',
-      price: '',
-      category: '',
-      barcode: '',
-      quantity: '',
-    }
-  );
+  const { addProduct, updateProduct, updateInventoryQuantity, inventory, checkProductExists } = useProductStore();
+  const [formData, setFormData] = useState({
+    name: product?.name || '',
+    description: product?.description || '',
+    price: product ? String(product.price_selling ?? '') : '',
+    category: product?.category || '',
+    quantity: '',
+  });
+  const [codes, setCodes] = useState(() => (product ? getProductCodes(product) : []));
+  const [codeInput, setCodeInput] = useState('');
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [checkingDuplicate, setCheckingDuplicate] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState(null);
-  const [barcodeInput, setBarcodeInput] = useState('');
-  const [barcodeConfirmed, setBarcodeConfirmed] = useState(!!product);
-  const [barcodeMode, setBarcodeMode] = useState('manual');
   const [showCameraScanner, setShowCameraScanner] = useState(false);
-  const [hasBarcode, setHasBarcode] = useState(product ? (product.barcode ? true : false) : null);
-  const initialIsCustom = product?.category
-    ? !PRODUCT_CATEGORIES.includes(product.category)
-    : false;
-  const [isCustomCategory, setIsCustomCategory] = useState(initialIsCustom);
-  const barcodeInputRef = useRef(null);
+  const [isCustomCategory, setIsCustomCategory] = useState(
+    Boolean(product?.category) && !PRODUCT_CATEGORIES.includes(product.category)
+  );
 
-  // Charger la quantité depuis l'inventaire si c'est une modification
   useEffect(() => {
-    if (product && product.id && inventory.length > 0) {
-      const inventoryItem = inventory.find((i) => i.product_id === product.id);
-      if (inventoryItem) {
-        setFormData((prev) => ({
-          ...prev,
-          quantity: String(inventoryItem.quantity_on_hand || 0),
-        }));
-      }
+    if (!product?.id) return;
+    const inventoryItem = inventory.find((i) => i.product_id === product.id);
+    if (inventoryItem) {
+      setFormData((prev) => ({ ...prev, quantity: String(inventoryItem.quantity_on_hand ?? 0) }));
     }
   }, [product, inventory]);
 
-  const handleCameraScan = (code) => {
-    const trimmed = (code || '').trim();
-    if (!trimmed) return;
-    setFormData((prev) => ({ ...prev, barcode: trimmed }));
-    setBarcodeInput(trimmed);
-    setBarcodeConfirmed(true);
-    setShowCameraScanner(false);
-    toast.success('Code-barres scanné : ' + trimmed);
+  const addCode = (raw) => {
+    const code = (raw || '').trim();
+    if (!code) return false;
+    if (code.length > 100) {
+      toast.error('Code trop long (100 caractères max)');
+      return false;
+    }
+    if (codes.some((c) => c.toUpperCase() === code.toUpperCase())) {
+      toast.error(`Le code "${code}" est déjà dans la liste`);
+      return false;
+    }
+    setCodes((prev) => [...prev, code]);
+    return true;
   };
 
-  // Gérer le scan du code-barres
-  const handleBarcodeInput = (e) => {
-    const value = e.target.value;
-    setBarcodeInput(value);
-    // Mettre à jour le barcode directement dans formData, peu importe la longueur
-    setFormData((prev) => ({
-      ...prev,
-      barcode: value,
-    }));
-  };
-
-  const handleBarcodeKeyDown = (e) => {
-    // Quand l'utilisateur appuie sur Entrée après scanner
+  const handleCodeKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (barcodeInput.trim().length > 0) {
-        setFormData((prev) => ({
-          ...prev,
-          barcode: barcodeInput.trim(),
-        }));
-        setBarcodeConfirmed(true);
-        setBarcodeInput('');
-        // Focus sur le champ nom après scan
-        document.querySelector('input[name="name"]')?.focus();
-        toast.success('Code-barres scanné avec succès! Entrez maintenant le nom du produit.');
-      } else {
-        toast.error('Le code-barres ne peut pas être vide');
-        setBarcodeInput('');
-      }
+      if (addCode(codeInput)) setCodeInput('');
     }
+  };
+
+  const handleCameraScan = (code) => {
+    if (addCode(code)) toast.success(`Code ajouté : ${code.trim()}`);
+    setShowCameraScanner(false);
+  };
+
+  const removeCode = (code) => setCodes((prev) => prev.filter((c) => c !== code));
+
+  const generateCode = () => {
+    addCode('COMP' + Date.now().toString().slice(-8));
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-    if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: '',
-      }));
-    }
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
-  const generateRandomBarcode = () => {
-    const barcode = 'COMP' + Date.now().toString().slice(-8);
-    setFormData((prev) => ({
-      ...prev,
-      barcode,
-    }));
+  const buildPayload = () => {
+    const pending = codeInput.trim();
+    const allCodes =
+      pending && !codes.some((c) => c.toUpperCase() === pending.toUpperCase())
+        ? [...codes, pending]
+        : codes;
+    return {
+      name: formData.name.trim(),
+      description: formData.description || null,
+      category: formData.category || null,
+      barcodes: allCodes,
+      price_selling: parseFloat(formData.price),
+      quantity_on_hand: parseInt(formData.quantity, 10) || 0,
+    };
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    const validation = validateProduct(formData, { requireBarcode: hasBarcode !== false });
-    if (!validation.isValid) {
-      setErrors(validation.errors);
-      return;
-    }
-
-    // Pour les nouveaux produits, vérifier les doublons
-    if (!product) {
-      setCheckingDuplicate(true);
-      try {
-        const duplicateCheck = await checkProductExists(formData.name, formData.barcode);
-        
-        if (duplicateCheck.exists) {
-          let message = '';
-          if (duplicateCheck.field === 'name') {
-            message = `Un produit avec le nom "${formData.name}" existe déjà!`;
-          } else if (duplicateCheck.field === 'barcode') {
-            message = `Un produit avec le code-barres "${formData.barcode}" existe déjà!`;
-          }
-          
-          setDuplicateWarning({
-            message,
-            product: duplicateCheck.product,
-            field: duplicateCheck.field
-          });
-          setCheckingDuplicate(false);
-          return;
-        }
-      } catch (error) {
-        console.error('Erreur lors de la vérification des doublons:', error);
-        toast.error('Erreur lors de la vérification des doublons');
-        setCheckingDuplicate(false);
-        return;
-      }
-      setCheckingDuplicate(false);
-    }
-
+  const save = async (payload) => {
     setLoading(true);
-
     try {
-      const productData = {
-        name: formData.name,
-        description: formData.description || null,
-        category: formData.category || null,
-        barcode: formData.barcode || null,
-        price_selling: parseFloat(formData.price),
-      };
-
       if (product) {
-        // Modification de produit existant
+        const { quantity_on_hand, ...productData } = payload;
         await updateProduct(product.id, productData);
-        
-        // Mise à jour de la quantité si elle a changé
-        const quantity = parseInt(formData.quantity) || 0;
-        const currentInventory = inventory.find((i) => i.product_id === product.id);
-        const currentQuantity = currentInventory?.quantity_on_hand || 0;
-        
-        if (quantity !== currentQuantity) {
-          const { updateInventoryQuantity } = useProductStore.getState();
-          await updateInventoryQuantity({
-            product_id: product.id,
-            quantity_on_hand: quantity,
-          }).catch((err) => {
-            console.error('Erreur mise à jour inventaire:', err);
-            // Continuer même si la mise à jour d'inventaire échoue
-          });
+        const currentQuantity = inventory.find((i) => i.product_id === product.id)?.quantity_on_hand ?? 0;
+        if (quantity_on_hand !== currentQuantity) {
+          await updateInventoryQuantity({ product_id: product.id, quantity_on_hand });
         }
-        toast.success('Produit mis à jour avec succès!');
+        toast.success('Produit mis à jour');
       } else {
-        // Création de nouveau produit
-        const newProduct = await addProduct(productData);
-        
-        // Créer l'entrée inventaire avec la quantité
-        const quantity = parseInt(formData.quantity) || 0;
-        if (quantity > 0) {
-          const { updateInventoryQuantity } = useProductStore.getState();
-          try {
-            await updateInventoryQuantity({
-              product_id: newProduct.id,
-              quantity_on_hand: quantity,
-            });
-          } catch (err) {
-            console.error('Erreur création inventaire:', err);
-            // Le backend devrait créer une entrée inventaire par défaut
-          }
-        }
-        toast.success('Produit ajouté avec succès!');
+        await addProduct(payload);
+        toast.success('Produit ajouté');
       }
-
       onClose();
     } catch (error) {
       toast.error(error.response?.data?.error || 'Une erreur est survenue');
-      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const validation = validateProduct(formData);
+    if (!validation.isValid) {
+      setErrors(validation.errors);
+      return;
+    }
+
+    const payload = buildPayload();
+
+    if (!product) {
+      setLoading(true);
+      try {
+        const duplicate = await checkProductExists(payload.name);
+        if (duplicate.exists) {
+          setDuplicateWarning(duplicate.product);
+          return;
+        }
+      } catch {
+        toast.error('Erreur lors de la vérification des doublons');
+        return;
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    await save(payload);
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="sticky top-0 flex items-center justify-between bg-[#0369a1] px-6 py-4 border-b border-[#075985]">
+        <div className="sticky top-0 z-10 flex items-center justify-between bg-[#0369a1] px-6 py-4 border-b border-[#075985]">
           <h3 className="text-xl font-bold text-white">
-            {product ? '✏️ Modifier le produit' : '➕ Ajouter un nouveau produit'}
+            {product ? 'Modifier le produit' : 'Nouveau produit'}
           </h3>
           <button
             type="button"
             onClick={onClose}
             className="text-white bg-white/20 hover:bg-white/30 rounded-lg p-2 transition-colors font-bold text-lg leading-none"
+            aria-label="Fermer"
           >
             ✕
           </button>
         </div>
 
-        {/* Form */}
+        {showCameraScanner && (
+          <BarcodeScanner onDetected={handleCameraScan} onClose={() => setShowCameraScanner(false)} />
+        )}
+
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Barcode Scanner - First Step */}
-          {!barcodeConfirmed && !product && (
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-lg p-6">
-              <div className="text-center mb-5">
-                <span className="text-4xl">📱</span>
-                <h3 className="text-lg font-bold text-dark-900 mt-2">Étape 1 : Code-barres du produit</h3>
-                <p className="text-sm text-dark-600 mt-1">Ce produit a-t-il un code-barres ?</p>
-              </div>
-
-              {/* Choose barcode option */}
-              {hasBarcode === null && (
-                <div className="flex gap-4 justify-center">
-                  <button
-                    type="button"
-                    onClick={() => setHasBarcode(true)}
-                    className="flex flex-col items-center gap-2 px-6 py-4 bg-white border-2 border-blue-300 hover:border-blue-500 hover:bg-blue-50 rounded-xl font-medium transition-all text-dark-700 min-w-[140px] shadow-sm"
-                  >
-                    <span className="text-3xl">🔖</span>
-                    <span>Avec code-barres</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setHasBarcode(false); setBarcodeConfirmed(true); }}
-                    className="flex flex-col items-center gap-2 px-6 py-4 bg-white border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 rounded-xl font-medium transition-all text-dark-700 min-w-[140px] shadow-sm"
-                  >
-                    <span className="text-3xl">🚫</span>
-                    <span>Sans code-barres</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Barcode input - shown after choosing "Avec code-barres" */}
-              {hasBarcode === true && (
-                <>
-                  {/* Toggle mode */}
-                  <div className="flex gap-2 justify-center mb-4">
-                    <button
-                      type="button"
-                      onClick={() => { setBarcodeMode('manual'); setShowCameraScanner(false); }}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
-                        barcodeMode === 'manual'
-                          ? 'bg-blue-600 text-white shadow'
-                          : 'bg-white border border-gray-300 text-dark-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      ⌨️ Saisie manuelle
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setBarcodeMode('camera'); setShowCameraScanner(true); }}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
-                        barcodeMode === 'camera'
-                          ? 'bg-blue-600 text-white shadow'
-                          : 'bg-white border border-gray-300 text-dark-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      📷 Scanner caméra
-                    </button>
-                  </div>
-
-                  {barcodeMode === 'manual' && (
-                    <>
-                      <input
-                        ref={barcodeInputRef}
-                        type="text"
-                        value={barcodeInput}
-                        onChange={handleBarcodeInput}
-                        onKeyDown={handleBarcodeKeyDown}
-                        autoFocus
-                        className="w-full px-4 py-3 border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-lg font-mono bg-white"
-                        placeholder="Tapez ou scannez le code-barres..."
-                      />
-                      <p className="text-xs text-dark-500 text-center mt-3">
-                        Appuyez sur <kbd className="bg-gray-200 px-1 rounded">Entrée</kbd> pour confirmer
-                      </p>
-                    </>
-                  )}
-
-                  {barcodeMode === 'camera' && !showCameraScanner && (
-                    <div className="text-center mt-2">
-                      <button
-                        type="button"
-                        onClick={() => setShowCameraScanner(true)}
-                        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
-                      >
-                        📷 Ouvrir la caméra
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="text-center mt-4">
-                    <button
-                      type="button"
-                      onClick={() => setHasBarcode(null)}
-                      className="text-sm text-gray-500 hover:text-gray-700 underline"
-                    >
-                      ← Retour
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Camera Scanner overlay */}
-          {showCameraScanner && (
-            <BarcodeScanner
-              onDetected={handleCameraScan}
-              onClose={() => { setShowCameraScanner(false); setBarcodeMode('manual'); }}
-            />
-          )}
-
-          {/* Badge : Sans code-barres */}
-          {barcodeConfirmed && product && !product.barcode && (
-            <div className="bg-orange-50 border border-orange-300 rounded-lg p-4 flex items-center gap-3">
-              <span className="text-2xl">🏷️</span>
-              <div>
-                <p className="font-semibold text-orange-900">Sans code-barres</p>
-                <p className="text-sm text-orange-700">Ce produit est enregistré sans code-barres</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => { setHasBarcode(true); setBarcodeConfirmed(false); }}
-                className="ml-auto text-sm px-3 py-1 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded transition-colors"
-              >
-                Ajouter un code-barres
-              </button>
-            </div>
-          )}
-
-          {/* Badge : Sans code-barres */}
-          {barcodeConfirmed && !product && hasBarcode === false && (
-            <div className="bg-orange-50 border border-orange-300 rounded-lg p-4 flex items-center gap-3">
-              <span className="text-2xl">🏷️</span>
-              <div>
-                <p className="font-semibold text-orange-900">Sans code-barres</p>
-                <p className="text-sm text-orange-700">Ce produit sera enregistré sans code-barres</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => { setHasBarcode(null); setBarcodeConfirmed(false); }}
-                className="ml-auto text-sm px-3 py-1 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded transition-colors"
-              >
-                Changer
-              </button>
-            </div>
-          )}
-
-          {/* Confirmation du Code-barres */}
-          {barcodeConfirmed && formData.barcode && (
-            <div className="bg-green-50 border border-green-300 rounded-lg p-4 flex items-center gap-3">
-              <span className="text-2xl">✅</span>
-              <div>
-                <p className="font-semibold text-green-900">Code-barres scanné</p>
-                <p className="text-sm text-green-800 font-mono">{formData.barcode}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setFormData((prev) => ({ ...prev, barcode: '' }));
-                  setBarcodeInput('');
-                  setBarcodeConfirmed(false);
-                  barcodeInputRef.current?.focus();
-                }}
-                className="ml-auto text-sm px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded transition-colors"
-              >
-                Changer
-              </button>
-            </div>
-          )}
-
-          {barcodeConfirmed && (
-            <>
-              <div className="border-t-2 border-gray-200 pt-4">
-                <h3 className="text-lg font-bold text-dark-900 mb-4">Étape 2: Informations du produit</h3>
-              </div>
-
-          {/* Name and Category Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-dark-900 mb-2">
@@ -432,10 +185,9 @@ export default function ProductForm({ product, onClose }) {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-dark-900 ${
-                  errors.name ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                }`}
-                placeholder="Ex: Laptop Dell"
+                className={inputClass(errors.name)}
+                placeholder="Ex : Laptop Dell"
+                autoFocus
               />
               {errors.name && <span className="text-red-500 text-sm mt-1 block">{errors.name}</span>}
             </div>
@@ -443,20 +195,15 @@ export default function ProductForm({ product, onClose }) {
             <div>
               <label className="block text-sm font-semibold text-dark-900 mb-2">Catégorie</label>
               <select
-                name="category"
-                value={isCustomCategory ? '__autre__' : (formData.category || '')}
+                value={isCustomCategory ? '__autre__' : formData.category}
                 onChange={(e) => {
-                  if (e.target.value === '__autre__') {
-                    setIsCustomCategory(true);
-                    setFormData((prev) => ({ ...prev, category: '' }));
-                  } else {
-                    setIsCustomCategory(false);
-                    setFormData((prev) => ({ ...prev, category: e.target.value }));
-                  }
+                  const isOther = e.target.value === '__autre__';
+                  setIsCustomCategory(isOther);
+                  setFormData((prev) => ({ ...prev, category: isOther ? '' : e.target.value }));
                 }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-dark-900"
+                className={inputClass(false)}
               >
-                <option value="">-- Sélectionner une catégorie --</option>
+                <option value="">-- Sélectionner --</option>
                 {PRODUCT_CATEGORIES.map((cat) => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
@@ -468,160 +215,152 @@ export default function ProductForm({ product, onClose }) {
                   name="category"
                   value={formData.category}
                   onChange={handleChange}
-                  className="w-full mt-2 px-4 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-dark-900"
-                  placeholder="Entrez la catégorie..."
-                  autoFocus
+                  className={`${inputClass(false)} mt-2`}
+                  placeholder="Nom de la catégorie"
                 />
               )}
             </div>
           </div>
 
-          {/* Description */}
           <div>
             <label className="block text-sm font-semibold text-dark-900 mb-2">Description</label>
             <textarea
               name="description"
               value={formData.description}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-              placeholder="Description du produit..."
-              rows="3"
+              className={`${inputClass(false)} resize-none`}
+              rows="2"
             />
           </div>
 
-          {/* Price and Quantity Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-dark-900 mb-2">
-                Prix de vente <span className="text-red-500">*</span>
+                Prix de vente (FCFA) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
                 name="price"
                 value={formData.price}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                  errors.price ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                }`}
-                placeholder="0.00"
-                step="0.01"
+                className={inputClass(errors.price)}
+                placeholder="0"
+                step="1"
                 min="0"
               />
               {errors.price && <span className="text-red-500 text-sm mt-1 block">{errors.price}</span>}
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-dark-900 mb-2">📦 Quantité stock</label>
+              <label className="block text-sm font-semibold text-dark-900 mb-2">Quantité en stock</label>
               <input
                 type="number"
                 name="quantity"
                 value={formData.quantity}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-dark-900"
+                className={inputClass(false)}
                 placeholder="0"
                 min="0"
                 step="1"
               />
             </div>
           </div>
-            </>
-          )}
 
-          {/* Duplicate Product Warning */}
+          <div>
+            <label className="block text-sm font-semibold text-dark-900 mb-2">
+              Codes-barres / QR <span className="font-normal text-dark-500">({codes.length})</span>
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={codeInput}
+                onChange={(e) => setCodeInput(e.target.value)}
+                onKeyDown={handleCodeKeyDown}
+                className={`${inputClass(false)} font-mono`}
+                placeholder="Saisir ou scanner un code puis Entrée"
+              />
+              <button
+                type="button"
+                onClick={() => addCode(codeInput) && setCodeInput('')}
+                className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
+                title="Ajouter le code"
+              >
+                ➕
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCameraScanner(true)}
+                className="px-3 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg"
+                title="Scanner avec la caméra"
+              >
+                📷
+              </button>
+              <button
+                type="button"
+                onClick={generateCode}
+                className="px-3 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg text-sm whitespace-nowrap"
+                title="Générer un code interne"
+              >
+                Générer
+              </button>
+            </div>
+
+            {codes.length > 0 ? (
+              <ul className="mt-3 flex flex-wrap gap-2">
+                {codes.map((code, index) => (
+                  <li
+                    key={code}
+                    className="inline-flex items-center gap-2 pl-3 pr-1 py-1 rounded-full bg-gray-100 border border-gray-200 text-sm font-mono"
+                  >
+                    {code}
+                    {index === 0 && codes.length > 1 && (
+                      <span className="text-[10px] uppercase font-sans text-primary-700">principal</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeCode(code)}
+                      className="w-6 h-6 rounded-full hover:bg-red-100 text-red-600 leading-none"
+                      aria-label={`Retirer ${code}`}
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm text-dark-500">Aucun code : le produit pourra être ajouté par recherche.</p>
+            )}
+          </div>
+
           {duplicateWarning && (
-            <div className="bg-red-50 border-2 border-red-300 rounded-lg p-6">
-              <div className="flex items-start gap-3">
-                <span className="text-3xl">⚠️</span>
-                <div className="flex-1">
-                  <h4 className="font-bold text-red-900 text-lg mb-2">Produit en double détecté!</h4>
-                  <p className="text-red-800 mb-3">{duplicateWarning.message}</p>
-                  
-                  {duplicateWarning.product && (
-                    <div className="bg-white rounded-lg p-4 border border-red-200 mb-4">
-                      <h5 className="font-semibold text-gray-900 mb-2">Produit existant:</h5>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <span className="font-medium">Nom:</span> {duplicateWarning.product.name}
-                        </div>
-                        <div>
-                          <span className="font-medium">Prix:</span> {new Intl.NumberFormat('fr-FR', {
-                            style: 'currency',
-                            currency: 'XAF',
-                          }).format(duplicateWarning.product.price_selling || duplicateWarning.product.price || 0)}
-                        </div>
-                        {duplicateWarning.product.barcode && (
-                          <div>
-                            <span className="font-medium">Code-barres:</span> {duplicateWarning.product.barcode}
-                          </div>
-                        )}
-                        {duplicateWarning.product.category && (
-                          <div>
-                            <span className="font-medium">Catégorie:</span> {duplicateWarning.product.category}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDuplicateWarning(null);
-                        // Forcer la création malgré le doublon
-                        setLoading(true);
-                        const productData = {
-                          name: formData.name,
-                          description: formData.description || null,
-                          category: formData.category || null,
-                          barcode: formData.barcode || null,
-                          price_selling: parseFloat(formData.price),
-                        };
-                        
-                        addProduct(productData)
-                          .then(async (newProduct) => {
-                            const quantity = parseInt(formData.quantity) || 0;
-                            if (quantity > 0) {
-                              const { updateInventoryQuantity } = useProductStore.getState();
-                              try {
-                                await updateInventoryQuantity({
-                                  product_id: newProduct.id,
-                                  quantity_on_hand: quantity,
-                                });
-                              } catch (err) {
-                                console.error('Erreur création inventaire:', err);
-                              }
-                            }
-                            toast.success('Produit ajouté avec succès!');
-                            onClose();
-                          })
-                          .catch((error) => {
-                            toast.error(error.response?.data?.error || 'Une erreur est survenue');
-                            console.error(error);
-                          })
-                          .finally(() => {
-                            setLoading(false);
-                          });
-                      }}
-                      disabled={loading}
-                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {loading ? 'Ajout...' : 'Forcer l\'ajout'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDuplicateWarning(null)}
-                      className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors"
-                    >
-                      Modifier les informations
-                    </button>
-                  </div>
-                </div>
+            <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 space-y-3">
+              <p className="font-semibold text-red-900">
+                Un produit nommé « {duplicateWarning.name} » existe déjà
+                {' '}({formatCurrency(duplicateWarning.price_selling)}).
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDuplicateWarning(null);
+                    save(buildPayload());
+                  }}
+                  disabled={loading}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg disabled:opacity-50"
+                >
+                  Ajouter quand même
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDuplicateWarning(null)}
+                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg"
+                >
+                  Modifier
+                </button>
               </div>
             </div>
           )}
 
-          {/* Form Actions */}
           <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
             <button
               type="button"
@@ -632,19 +371,10 @@ export default function ProductForm({ product, onClose }) {
             </button>
             <button
               type="submit"
-              disabled={loading || checkingDuplicate}
-              className="px-6 py-2 bg-[#0369a1] hover:bg-[#0284c7] text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+              disabled={loading}
+              className="px-6 py-2 bg-[#0369a1] hover:bg-[#0284c7] text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              {loading || checkingDuplicate ? (
-                <>
-                  <span className="animate-spin">⏳</span>
-                  {checkingDuplicate ? 'Vérification...' : 'En cours...'}
-                </>
-              ) : product ? (
-                'Mettre à jour'
-              ) : (
-                'Ajouter'
-              )}
+              {loading ? 'En cours...' : product ? 'Mettre à jour' : 'Ajouter'}
             </button>
           </div>
         </form>

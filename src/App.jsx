@@ -1,9 +1,7 @@
-import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
 
-// Pages
 import Login from './pages/auth/Login';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminProducts from './pages/admin/AdminProducts';
@@ -11,7 +9,6 @@ import AdminInventory from './pages/admin/AdminInventory';
 import AdminSales from './pages/admin/AdminSales';
 import AdminStatistics from './pages/admin/AdminStatistics';
 import AdminUsers from './pages/admin/AdminUsers';
-import AdminSettings from './pages/admin/AdminSettings';
 import AdminClients from './pages/admin/AdminClients';
 import AdminInvoices from './pages/admin/AdminInvoices';
 import SellerDashboard from './pages/seller/SellerDashboard';
@@ -19,11 +16,10 @@ import SellerInvoices from './pages/seller/SellerInvoices';
 import SellerNewSale from './pages/seller/NewSale';
 import SellerSalesHistory from './pages/seller/SellerSalesHistory';
 import SellerPerformance from './pages/seller/SellerPerformance';
+import AccountSettings from './pages/AccountSettings';
 
-// Layouts
 import Layout from './components/Layout';
 
-// Protected Route Component
 function ProtectedRoute({ children, requiredRole }) {
   const { user, isAuthenticated } = useAuthStore();
 
@@ -43,10 +39,8 @@ export default function App() {
     <>
       <BrowserRouter>
         <Routes>
-          {/* Auth Routes */}
           <Route path="/" element={<Login />} />
 
-          {/* Admin Routes */}
           <Route
             path="/admin"
             element={
@@ -131,14 +125,13 @@ export default function App() {
             path="/admin/settings"
             element={
               <ProtectedRoute requiredRole="admin">
-                <Layout pageTitle="Paramètres">
-                  <AdminSettings />
+                <Layout pageTitle="Mon compte">
+                  <AccountSettings />
                 </Layout>
               </ProtectedRoute>
             }
           />
 
-          {/* Seller Routes */}
           <Route
             path="/seller"
             element={
@@ -189,13 +182,21 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/seller/settings"
+            element={
+              <ProtectedRoute requiredRole="seller">
+                <Layout pageTitle="Mon compte">
+                  <AccountSettings />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
 
-          {/* 404 */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
 
-      {/* Toast Notifications */}
       <Toaster
         position="top-right"
         reverseOrder={false}
