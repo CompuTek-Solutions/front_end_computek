@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { Camera, Plus, Sparkles, X } from 'lucide-react';
 import { useProductStore } from '../../store/productStore';
+import { Button, Modal, inputClass as baseInput, labelClass } from '../ui';
 import { validateProduct } from '../../utils/validation';
 import { formatCurrency, getProductCodes } from '../../utils/helpers';
 import { toast } from 'react-hot-toast';
@@ -13,10 +15,7 @@ const PRODUCT_CATEGORIES = [
   'Sécurité électrique',
 ];
 
-const inputClass = (hasError) =>
-  `w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-dark-900 ${
-    hasError ? 'border-red-500 bg-red-50' : 'border-gray-300'
-  }`;
+const inputClass = (hasError) => `${baseInput} ${hasError ? 'border-red-500 bg-red-50' : ''}`;
 
 export default function ProductForm({ product, onClose }) {
   const { addProduct, updateProduct, updateInventoryQuantity, inventory, checkProductExists } = useProductStore();
@@ -154,231 +153,205 @@ export default function ProductForm({ product, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 z-10 flex items-center justify-between bg-[#0369a1] px-6 py-4 border-b border-[#075985]">
-          <h3 className="text-xl font-bold text-white">
-            {product ? 'Modifier le produit' : 'Nouveau produit'}
-          </h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-white bg-white/20 hover:bg-white/30 rounded-lg p-2 transition-colors font-bold text-lg leading-none"
-            aria-label="Fermer"
-          >
-            ✕
-          </button>
-        </div>
+    <Modal
+      title={product ? 'Modifier le produit' : 'Nouveau produit'}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>Annuler</Button>
+          <Button type="submit" form="product-form" loading={loading}>
+            {product ? 'Mettre à jour' : 'Ajouter'}
+          </Button>
+        </>
+      }
+    >
+      {showCameraScanner && (
+        <BarcodeScanner onDetected={handleCameraScan} onClose={() => setShowCameraScanner(false)} />
+      )}
 
-        {showCameraScanner && (
-          <BarcodeScanner onDetected={handleCameraScan} onClose={() => setShowCameraScanner(false)} />
-        )}
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-dark-900 mb-2">
-                Nom du produit <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                className={inputClass(errors.name)}
-                placeholder="Ex : Laptop Dell"
-                autoFocus
-              />
-              {errors.name && <span className="text-red-500 text-sm mt-1 block">{errors.name}</span>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-dark-900 mb-2">Catégorie</label>
-              <select
-                value={isCustomCategory ? '__autre__' : formData.category}
-                onChange={(e) => {
-                  const isOther = e.target.value === '__autre__';
-                  setIsCustomCategory(isOther);
-                  setFormData((prev) => ({ ...prev, category: isOther ? '' : e.target.value }));
-                }}
-                className={inputClass(false)}
-              >
-                <option value="">-- Sélectionner --</option>
-                {PRODUCT_CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-                <option value="__autre__">Autre...</option>
-              </select>
-              {isCustomCategory && (
-                <input
-                  type="text"
-                  name="category"
-                  value={formData.category}
-                  onChange={handleChange}
-                  className={`${inputClass(false)} mt-2`}
-                  placeholder="Nom de la catégorie"
-                />
-              )}
-            </div>
-          </div>
-
+      <form id="product-form" onSubmit={handleSubmit} className="space-y-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-semibold text-dark-900 mb-2">Description</label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              className={`${inputClass(false)} resize-none`}
-              rows="2"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-dark-900 mb-2">
-                Prix de vente (FCFA) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                name="price"
-                value={formData.price}
-                onChange={handleChange}
-                className={inputClass(errors.price)}
-                placeholder="0"
-                step="1"
-                min="0"
-              />
-              {errors.price && <span className="text-red-500 text-sm mt-1 block">{errors.price}</span>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-dark-900 mb-2">Quantité en stock</label>
-              <input
-                type="number"
-                name="quantity"
-                value={formData.quantity}
-                onChange={handleChange}
-                className={inputClass(false)}
-                placeholder="0"
-                min="0"
-                step="1"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-dark-900 mb-2">
-              Codes-barres / QR <span className="font-normal text-dark-500">({codes.length})</span>
+            <label className={labelClass}>
+              Nom du produit <span className="text-red-500">*</span>
             </label>
-            <div className="flex gap-2">
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              className={inputClass(errors.name)}
+              placeholder="Ex : Laptop Dell"
+              autoFocus
+            />
+            {errors.name && <p className="text-red-600 text-xs mt-1">{errors.name}</p>}
+          </div>
+
+          <div>
+            <label className={labelClass}>Catégorie</label>
+            <select
+              value={isCustomCategory ? '__autre__' : formData.category}
+              onChange={(e) => {
+                const isOther = e.target.value === '__autre__';
+                setIsCustomCategory(isOther);
+                setFormData((prev) => ({ ...prev, category: isOther ? '' : e.target.value }));
+              }}
+              className={inputClass(false)}
+            >
+              <option value="">-- Sélectionner --</option>
+              {PRODUCT_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+              <option value="__autre__">Autre...</option>
+            </select>
+            {isCustomCategory && (
               <input
                 type="text"
-                value={codeInput}
-                onChange={(e) => setCodeInput(e.target.value)}
-                onKeyDown={handleCodeKeyDown}
-                className={`${inputClass(false)} font-mono`}
-                placeholder="Saisir ou scanner un code puis Entrée"
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                className={`${inputClass(false)} mt-2`}
+                placeholder="Nom de la catégorie"
               />
-              <button
-                type="button"
-                onClick={() => addCode(codeInput) && setCodeInput('')}
-                className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
-                title="Ajouter le code"
-              >
-                ➕
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowCameraScanner(true)}
-                className="px-3 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg"
-                title="Scanner avec la caméra"
-              >
-                📷
-              </button>
-              <button
-                type="button"
-                onClick={generateCode}
-                className="px-3 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg text-sm whitespace-nowrap"
-                title="Générer un code interne"
-              >
-                Générer
-              </button>
-            </div>
-
-            {codes.length > 0 ? (
-              <ul className="mt-3 flex flex-wrap gap-2">
-                {codes.map((code, index) => (
-                  <li
-                    key={code}
-                    className="inline-flex items-center gap-2 pl-3 pr-1 py-1 rounded-full bg-gray-100 border border-gray-200 text-sm font-mono"
-                  >
-                    {code}
-                    {index === 0 && codes.length > 1 && (
-                      <span className="text-[10px] uppercase font-sans text-primary-700">principal</span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => removeCode(code)}
-                      className="w-6 h-6 rounded-full hover:bg-red-100 text-red-600 leading-none"
-                      aria-label={`Retirer ${code}`}
-                    >
-                      ✕
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-2 text-sm text-dark-500">Aucun code : le produit pourra être ajouté par recherche.</p>
             )}
           </div>
+        </div>
 
-          {duplicateWarning && (
-            <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 space-y-3">
-              <p className="font-semibold text-red-900">
-                Un produit nommé « {duplicateWarning.name} » existe déjà
-                {' '}({formatCurrency(duplicateWarning.price_selling)}).
-              </p>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDuplicateWarning(null);
-                    save(buildPayload());
-                  }}
-                  disabled={loading}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg disabled:opacity-50"
-                >
-                  Ajouter quand même
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDuplicateWarning(null)}
-                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg"
-                >
-                  Modifier
-                </button>
-              </div>
-            </div>
-          )}
+        <div>
+          <label className={labelClass}>Description</label>
+          <textarea
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            className={`${inputClass(false)} h-auto py-2 resize-none`}
+            rows="2"
+          />
+        </div>
 
-          <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-2 border border-gray-300 text-dark-900 font-medium rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Annuler
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-6 py-2 bg-[#0369a1] hover:bg-[#0284c7] text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              {loading ? 'En cours...' : product ? 'Mettre à jour' : 'Ajouter'}
-            </button>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>
+              Prix (FCFA) <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              inputMode="numeric"
+              name="price"
+              value={formData.price}
+              onChange={handleChange}
+              className={inputClass(errors.price)}
+              placeholder="0"
+              step="1"
+              min="0"
+            />
+            {errors.price && <p className="text-red-600 text-xs mt-1">{errors.price}</p>}
           </div>
-        </form>
-      </div>
-    </div>
+
+          <div>
+            <label className={labelClass}>Stock</label>
+            <input
+              type="number"
+              inputMode="numeric"
+              name="quantity"
+              value={formData.quantity}
+              onChange={handleChange}
+              className={inputClass(false)}
+              placeholder="0"
+              min="0"
+              step="1"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className={labelClass}>
+            Codes-barres / QR <span className="font-normal text-dark-500">({codes.length})</span>
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={codeInput}
+              onChange={(e) => setCodeInput(e.target.value)}
+              onKeyDown={handleCodeKeyDown}
+              className={`${inputClass(false)} font-mono`}
+              placeholder="Saisir ou scanner puis Entrée"
+            />
+            <Button
+              variant="secondary"
+              size="icon"
+              icon={Plus}
+              className="h-10 w-10 shrink-0"
+              onClick={() => addCode(codeInput) && setCodeInput('')}
+              title="Ajouter le code"
+              aria-label="Ajouter le code"
+            />
+            <Button
+              variant="secondary"
+              size="icon"
+              icon={Camera}
+              className="h-10 w-10 shrink-0"
+              onClick={() => setShowCameraScanner(true)}
+              title="Scanner avec la caméra"
+              aria-label="Scanner avec la caméra"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={generateCode}
+            className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-primary-700 hover:underline"
+          >
+            <Sparkles className="h-4 w-4" /> Générer un code interne
+          </button>
+
+          {codes.length > 0 && (
+            <ul className="mt-3 flex flex-wrap gap-2">
+              {codes.map((code, index) => (
+                <li
+                  key={code}
+                  className="inline-flex items-center gap-1.5 pl-3 pr-1 py-1 rounded-full bg-dark-100 text-sm font-mono text-dark-800"
+                >
+                  {code}
+                  {index === 0 && codes.length > 1 && (
+                    <span className="text-[10px] uppercase font-sans font-semibold text-primary-700">principal</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeCode(code)}
+                    className="h-6 w-6 inline-flex items-center justify-center rounded-full text-dark-500 hover:bg-red-100 hover:text-red-600"
+                    aria-label={`Retirer ${code}`}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {duplicateWarning && (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 space-y-3">
+            <p className="text-sm font-medium text-amber-900">
+              Un produit nommé « {duplicateWarning.name} » existe déjà ({formatCurrency(duplicateWarning.price_selling)}).
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="danger"
+                size="sm"
+                loading={loading}
+                onClick={() => {
+                  setDuplicateWarning(null);
+                  save(buildPayload());
+                }}
+              >
+                Ajouter quand même
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => setDuplicateWarning(null)}>
+                Modifier
+              </Button>
+            </div>
+          </div>
+        )}
+      </form>
+    </Modal>
   );
 }

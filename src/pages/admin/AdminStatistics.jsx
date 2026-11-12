@@ -1,214 +1,117 @@
 import React, { useMemo, useEffect } from 'react';
+import { BarChart3, CreditCard, PackageCheck, PieChart as PieIcon, ShoppingBag, Wallet } from 'lucide-react';
+import {
+  BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} from 'recharts';
 import { useProductStore } from '../../store/productStore';
 import { formatCurrency } from '../../utils/helpers';
-import {
-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
-} from 'recharts';
+import { Card, EmptyState, PageHeader, StatCard } from '../../components/ui';
+
+const CHART_COLORS = ['#0369a1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#64748b', '#7dd3fc', '#075985'];
+const AXIS = { stroke: '#94a3b8', fontSize: 12 };
+const compact = (v) => new Intl.NumberFormat('fr-FR', { notation: 'compact', maximumFractionDigits: 1 }).format(v);
 
 export default function AdminStatistics() {
   const { adminStats, fetchAdminStats } = useProductStore();
 
   useEffect(() => {
-    if (!adminStats) {
-      fetchAdminStats().catch(() => {});
-    }
-  }, [adminStats, fetchAdminStats]);
+    fetchAdminStats().catch(() => {});
+  }, [fetchAdminStats]);
 
-  const stats = useMemo(() => {
-    return (
-      adminStats?.summary ?? {
-        totalRevenue: 0,
-        totalQuantity: 0,
-        totalOrders: 0,
-        averageOrder: 0,
-      }
-    );
-  }, [adminStats]);
+  const stats = adminStats?.summary ?? { totalRevenue: 0, totalQuantity: 0, totalOrders: 0, averageOrder: 0 };
+  const topProducts = useMemo(
+    () => (adminStats?.topProducts ?? []).slice(0, 10).map((p) => ({ ...p, quantity: Number(p.quantity) })),
+    [adminStats]
+  );
 
-  const topProducts = useMemo(() => {
-    return adminStats?.topProducts?.slice(0, 10) ?? [];
-  }, [adminStats]);
+  const monthlyData = useMemo(
+    () =>
+      (adminStats?.monthlySales ?? [])
+        .map((entry) => ({
+          month: new Date(entry.month).toLocaleString('fr-FR', { month: 'short', year: '2-digit' }),
+          ventes: Number(entry.total_revenue) || 0,
+        }))
+        .reverse(),
+    [adminStats]
+  );
 
-  const monthlyData = useMemo(() => {
-    return (adminStats?.monthlySales ?? []).map((entry) => {
-      const monthLabel = entry.month
-        ? new Date(entry.month).toLocaleString('fr-FR', { month: 'short', year: 'numeric' })
-        : '—';
-      return {
-        month: monthLabel,
-        ventes: entry.total_revenue ?? entry.totalRevenue ?? 0,
-      };
-    }).reverse();
-  }, [adminStats]);
-
-  const categoryData = useMemo(() => {
-    return (adminStats?.categories ?? []).map((category) => ({
-      name: category.category || 'Autre',
-      value: category.sales_count ?? category.total_revenue ?? 0,
-    }));
-  }, [adminStats]);
-
-  const colors = ['#0284c7', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+  const categoryData = useMemo(
+    () =>
+      (adminStats?.categories ?? []).map((c) => ({
+        name: c.category || 'Autre',
+        value: Number(c.total_revenue) || 0,
+      })),
+    [adminStats]
+  );
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-dark-900">Statistiques et Rapports</h1>
-      </div>
+    <>
+      <PageHeader title="Statistiques" />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200 p-6">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-dark-600">Chiffre d'affaires</h3>
-            <span className="text-2xl">💰</span>
-          </div>
-          <p className="text-3xl font-bold text-blue-600">{formatCurrency(stats.totalRevenue)}</p>
-          <p className="text-xs text-blue-600 mt-2">Total de tous les temps</p>
-        </div>
-
-        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200 p-6">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-dark-600">Nombre de ventes</h3>
-            <span className="text-2xl">🛒</span>
-          </div>
-          <p className="text-3xl font-bold text-green-600">{stats.totalOrders}</p>
-        </div>
-
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200 p-6">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-dark-600">Articles vendus</h3>
-            <span className="text-2xl">📦</span>
-          </div>
-          <p className="text-3xl font-bold text-purple-600">{stats.totalQuantity}</p>
-          <p className="text-xs text-purple-600 mt-2">Total d'unités</p>
-        </div>
-
-        <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border border-orange-200 p-6">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-dark-600">Panier moyen</h3>
-            <span className="text-2xl">📊</span>
-          </div>
-          <p className="text-3xl font-bold text-orange-600">{formatCurrency(stats.averageOrder)}</p>
-          <p className="text-xs text-orange-600 mt-2">Par transaction</p>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <StatCard label="Chiffre d'affaires" value={formatCurrency(stats.totalRevenue)} icon={Wallet} tone="success" />
+        <StatCard label="Ventes" value={stats.totalOrders} icon={ShoppingBag} />
+        <StatCard label="Articles vendus" value={stats.totalQuantity} icon={PackageCheck} />
+        <StatCard label="Panier moyen" value={formatCurrency(stats.averageOrder)} icon={CreditCard} tone="neutral" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-dark-900 mb-4">Ventes Mensuelles</h3>
+        <Card title="Chiffre d'affaires mensuel">
           {monthlyData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="month" stroke="#9ca3af" />
-                <YAxis stroke="#9ca3af" />
-                <Tooltip 
-                  formatter={(value) => formatCurrency(value)}
-                  contentStyle={{ backgroundColor: '#f3f4f6', border: '1px solid #d1d5db' }}
-                />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="ventes"
-                  stroke="#0284c7"
-                  strokeWidth={2}
-                  dot={{ fill: '#0284c7', r: 4 }}
-                  activeDot={{ r: 6 }}
-                  name="Chiffre d'affaires"
-                />
-              </LineChart>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={monthlyData} margin={{ left: -10, right: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                <XAxis dataKey="month" {...AXIS} />
+                <YAxis {...AXIS} tickFormatter={compact} width={50} />
+                <Tooltip formatter={(v) => formatCurrency(v)} cursor={{ fill: '#f1f5f9' }} />
+                <Bar dataKey="ventes" name="Chiffre d'affaires" fill="#0369a1" radius={[6, 6, 0, 0]} />
+              </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-72 flex items-center justify-center">
-              <div className="text-center">
-                <span className="text-3xl">📊</span>
-                <p className="text-dark-500 mt-2">Pas de données disponibles</p>
-              </div>
-            </div>
+            <EmptyState icon={BarChart3} title="Pas encore de données" />
           )}
-        </div>
+        </Card>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-dark-900 mb-4">Répartition par Catégorie</h3>
+        <Card title="Chiffre d'affaires par catégorie">
           {categoryData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={280}>
               <PieChart>
-                <Pie
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value }) => `${name}: ${value}`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
+                <Pie data={categoryData} dataKey="value" nameKey="name" innerRadius="45%" outerRadius="75%" paddingAngle={2}>
                   {categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                    <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip formatter={(v) => formatCurrency(v)} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-72 flex items-center justify-center">
-              <div className="text-center">
-                <span className="text-3xl">📈</span>
-                <p className="text-dark-500 mt-2">Pas de données disponibles</p>
-              </div>
-            </div>
+            <EmptyState icon={PieIcon} title="Pas encore de données" />
           )}
-        </div>
+        </Card>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-dark-900 mb-4">Top 10 Produits les Plus Vendus</h3>
+      <Card title="Top 10 des produits (quantités vendues)">
         {topProducts.length > 0 ? (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={topProducts}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} stroke="#9ca3af" />
-              <YAxis stroke="#9ca3af" />
-              <Tooltip contentStyle={{ backgroundColor: '#f3f4f6', border: '1px solid #d1d5db' }} />
-              <Bar dataKey="quantity" fill="#0284c7" name="Quantité" radius={[8, 8, 0, 0]} />
+          <ResponsiveContainer width="100%" height={Math.max(200, topProducts.length * 40)}>
+            <BarChart data={topProducts} layout="vertical" margin={{ left: 0, right: 16 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+              <XAxis type="number" {...AXIS} allowDecimals={false} />
+              <YAxis
+                type="category"
+                dataKey="name"
+                {...AXIS}
+                width={110}
+                tickFormatter={(name) => (name.length > 16 ? `${name.slice(0, 15)}…` : name)}
+              />
+              <Tooltip cursor={{ fill: '#f1f5f9' }} />
+              <Bar dataKey="quantity" name="Quantité" fill="#0ea5e9" radius={[0, 6, 6, 0]} />
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <div className="h-72 flex items-center justify-center">
-            <div className="text-center">
-              <span className="text-3xl">📦</span>
-              <p className="text-dark-500 mt-2">Pas de données disponibles</p>
-            </div>
-          </div>
+          <EmptyState icon={BarChart3} title="Pas encore de données" />
         )}
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-dark-900">Résumé des Ventes</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="px-6 py-3 text-left text-sm font-semibold text-dark-900">Période</th>
-                <th className="px-6 py-3 text-right text-sm font-semibold text-dark-900">Nombre de ventes</th>
-                <th className="px-6 py-3 text-right text-sm font-semibold text-dark-900">Chiffre d'affaires</th>
-                <th className="px-6 py-3 text-right text-sm font-semibold text-dark-900">Panier moyen</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="px-6 py-4 text-dark-900 font-medium">Tous les temps</td>
-                <td className="px-6 py-4 text-right text-dark-900 font-semibold">{stats.totalOrders}</td>
-                <td className="px-6 py-4 text-right text-dark-900 font-semibold text-primary-600">{formatCurrency(stats.totalRevenue)}</td>
-                <td className="px-6 py-4 text-right text-dark-900">{formatCurrency(stats.averageOrder)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+      </Card>
+    </>
   );
 }

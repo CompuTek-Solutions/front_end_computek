@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
+import { Eye, EyeOff, Lock, User } from 'lucide-react';
+import { Button, inputClass, labelClass } from '../../components/ui';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -25,77 +27,59 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-600 via-primary-700 to-dark-800 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <div className="text-center mb-8">
-            <div className="relative w-24 h-24 mx-auto mb-4">
-              <div className="relative w-full h-full border border-white/60 overflow-hidden bg-white/95 backdrop-blur">
-                <img src="/logo.jpg" alt="CompuTek Solutions" className="w-full h-full object-contain p-2" />
-              </div>
-            </div>
-          </div>
+    <div className="min-h-dvh bg-gradient-to-br from-primary-700 via-primary-800 to-dark-900 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6 sm:p-8">
+        <div className="text-center mb-6">
+          <img src="/logo.jpg" alt="CompuTek Solutions" className="h-20 w-20 mx-auto object-contain" />
+          <h1 className="mt-3 text-lg font-bold text-dark-900">CompuTek Solutions</h1>
+          <p className="text-sm text-dark-500">Connectez-vous pour continuer</p>
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label htmlFor="email" className="block text-sm font-semibold text-dark-900 mb-2">
-                Email ou Nom d'utilisateur
-              </label>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="email" className={labelClass}>Email ou nom d&apos;utilisateur</label>
+            <div className="relative">
+              <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-dark-400" />
               <input
                 id="email"
                 type="text"
                 autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-primary-500 transition-colors bg-white text-dark-900 placeholder-gray-500"
-                placeholder="votre@email.com ou votre_nom"
+                className={`${inputClass} h-11 pl-9`}
                 required
               />
             </div>
+          </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-semibold text-dark-900 mb-2">
-                Mot de passe
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-primary-500 transition-colors bg-white text-dark-900 placeholder-gray-500"
-                  placeholder="••••••••"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-700 hover:text-dark-900 font-bold"
-                >
-                  {showPassword ? '👁️' : '👁️‍🗨️'}
-                </button>
-              </div>
+          <div>
+            <label htmlFor="password" className={labelClass}>Mot de passe</label>
+            <div className="relative">
+              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-dark-400" />
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={`${inputClass} h-11 pl-9 pr-11`}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-9 w-9 inline-flex items-center justify-center rounded-lg text-dark-500 hover:bg-dark-100"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
+          </div>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-[#0369a1] hover:bg-[#0284c7] text-white font-bold py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg border-0"
-            >
-              {isLoading ? (
-                <>
-                  <span className="animate-spin">⏳</span>
-                  <span>Connexion...</span>
-                </>
-              ) : (
-                <span>Se connecter</span>
-              )}
-            </button>
-          </form>
-
-        </div>
+          <Button type="submit" size="lg" loading={isLoading} className="w-full">
+            Se connecter
+          </Button>
+        </form>
       </div>
     </div>
   );

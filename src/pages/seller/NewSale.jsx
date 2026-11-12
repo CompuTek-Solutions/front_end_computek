@@ -3,6 +3,11 @@ import { useProductStore } from '../../store/productStore';
 import BarcodeScanner from '../../components/seller/BarcodeScanner';
 import { printInvoice, formatCurrency, normalizeForSearch, getProductCodes, productMatchesSearch } from '../../utils/helpers';
 import toast from 'react-hot-toast';
+import {
+  Camera, CheckCircle2, ChevronLeft, ChevronRight, Minus, Package, Plus, ScanBarcode, ShoppingCart,
+  Trash2, UserPlus, X,
+} from 'lucide-react';
+import { Badge, Button, EmptyState, Modal, SearchInput, inputClass, labelClass } from '../../components/ui';
 
 export default function SellerNewSale() {
   const { products, addSale, clients, fetchClients, addClient, fetchProducts, fetchInventory, getInventoryQuantity, getProductByBarcode } = useProductStore();
@@ -32,6 +37,7 @@ export default function SellerNewSale() {
   const [productPage, setProductPage] = useState(0);
   const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
   const [isAddingClient, setIsAddingClient] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
   const barcodeFieldRef = useRef(null);
 
   const PRODUCTS_PER_PAGE = 18;
@@ -84,7 +90,7 @@ export default function SellerNewSale() {
       ];
     });
     setShowScanner(false);
-    toast.success(`${product.name} x${qty} ajouté au panier`);
+    toast.success(`${product.name} ajouté`, { id: 'cart-add', duration: 1500 });
   }, [getInventoryQuantity]);
 
   const addProductByBarcode = useCallback(async (rawBarcode) => {
@@ -243,12 +249,191 @@ export default function SellerNewSale() {
     focusBarcodeField();
   };
 
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  const itemCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
+  const emptyClient = { name: '', email: '', phone: '', address: '', rccm: '', postal_box: '', nc: '' };
+
+  const qtyControl = (item, size = 'h-8 w-8') => (
+    <div className="flex items-center gap-1">
+      <button
+        type="button"
+        onClick={() => updateCartQty(item.productId, item.quantity - 1)}
+        className={`${size} inline-flex items-center justify-center rounded-lg bg-dark-100 hover:bg-dark-200 text-dark-700`}
+        aria-label="Diminuer"
+      >
+        <Minus className="h-4 w-4" />
+      </button>
+      <input
+        type="number"
+        inputMode="numeric"
+        min="1"
+        max={getInventoryQuantity(item.productId)}
+        value={item.quantity}
+        onChange={(e) => updateCartQty(item.productId, parseInt(e.target.value, 10) || 1)}
+        className="h-8 w-12 rounded-lg border border-dark-200 text-center text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500"
+        aria-label={`Quantité de ${item.name}`}
+      />
+      <button
+        type="button"
+        onClick={() => updateCartQty(item.productId, item.quantity + 1)}
+        className={`${size} inline-flex items-center justify-center rounded-lg bg-dark-100 hover:bg-dark-200 text-dark-700`}
+        aria-label="Augmenter"
+      >
+        <Plus className="h-4 w-4" />
+      </button>
+    </div>
+  );
+
+  const removeButton = (item) => (
+    <button
+      type="button"
+      onClick={() => updateCartQty(item.productId, 0)}
+      className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-dark-400 hover:bg-red-50 hover:text-red-600"
+      aria-label={`Retirer ${item.name}`}
+    >
+      <X className="h-4 w-4" />
+    </button>
+  );
+
+  const totals = (
+    <div className="space-y-1 text-sm">
+      <div className="flex justify-between text-dark-600">
+        <span>Sous-total</span>
+        <span className="font-medium">{formatCurrency(subtotal)}</span>
+      </div>
+      {discountAmount > 0 && (
+        <div className="flex justify-between text-amber-700">
+          <span>Remise ({derivedDiscountPercent.toFixed(1)} %)</span>
+          <span className="font-medium">−{formatCurrency(discountAmount)}</span>
+        </div>
+      )}
+      <div className="flex justify-between pt-1 border-t border-dark-200 text-lg font-bold text-dark-900">
+        <span>Total</span>
+        <span>{formatCurrency(total)}</span>
+      </div>
+    </div>
+  );
+
+  const completeSale = async () => {
+    await handleCompleteSale();
+    setShowCheckout(false);
+    focusBarcodeField();
+  };
+
+  const checkoutFields = (
+    <div className="space-y-5">
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <label className={labelClass.replace('mb-1.5', '')}>Remise</label>
+          <div className="flex rounded-lg bg-dark-100 p-0.5 text-xs font-semibold">
+            {[
+              { value: 'percent', label: '%' },
+              { value: 'amount', label: 'FCFA' },
+            ].map((mode) => (
+              <button
+                key={mode.value}
+                type="button"
+                onClick={() => setDiscountMode(mode.value)}
+                className={`rounded-md px-3 py-1 ${discountMode === mode.value ? 'bg-white text-primary-700 shadow-sm' : 'text-dark-500'}`}
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {discountMode === 'percent' ? (
+          <input
+            type="number"
+            inputMode="decimal"
+            value={discountPercentInput}
+            onChange={(e) => setDiscountPercentInput(e.target.value)}
+            className={inputClass}
+            min="0"
+            max="100"
+            placeholder="0 %"
+          />
+        ) : (
+          <input
+            type="number"
+            inputMode="numeric"
+            value={discountAmountInput}
+            onChange={(e) => setDiscountAmountInput(e.target.value)}
+            className={inputClass}
+            min="0"
+            placeholder="0 FCFA"
+          />
+        )}
+      </div>
+
+      <div>
+        <label className={labelClass}>Mode de paiement</label>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { value: 'cash', label: 'Espèces' },
+            { value: 'paiement_marchand', label: 'Paiement marchand' },
+          ].map((m) => (
+            <button
+              key={m.value}
+              type="button"
+              onClick={() => setPaymentMethod(m.value)}
+              className={`h-10 rounded-lg border px-2 text-sm font-medium transition-colors ${
+                paymentMethod === m.value
+                  ? 'border-primary-700 bg-primary-50 text-primary-800 ring-1 ring-primary-700'
+                  : 'border-dark-200 bg-white text-dark-700 hover:bg-dark-50'
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <label className={labelClass.replace('mb-1.5', '')}>Client</label>
+          <button
+            type="button"
+            onClick={() => setShowNewClient(true)}
+            className="inline-flex items-center gap-1 text-sm font-medium text-primary-700 hover:underline"
+          >
+            <UserPlus className="h-4 w-4" /> Nouveau
+          </button>
+        </div>
+        <select value={selectedClientId} onChange={(e) => setSelectedClientId(e.target.value)} className={inputClass}>
+          <option value="">Sans client</option>
+          {clients.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}{c.phone ? ` – ${c.phone}` : ''}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className={labelClass}>Notes</label>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          className={`${inputClass} h-auto py-2 resize-none`}
+          rows="2"
+        />
+      </div>
+    </div>
+  );
+
+  const validateButton = (
+    <Button
+      variant="success"
+      size="lg"
+      icon={CheckCircle2}
+      loading={isGeneratingInvoice}
+      disabled={cartItems.length === 0}
+      onClick={completeSale}
+      className="w-full"
+    >
+      Valider la vente
+    </Button>
+  );
 
   return (
-    <div className="flex flex-col h-full bg-gray-100 -m-6">
+    <div className="flex flex-col h-full">
       {showScanner && (
         <BarcodeScanner
           onDetected={handleCameraScan}
@@ -256,37 +441,12 @@ export default function SellerNewSale() {
         />
       )}
 
-      <div className="bg-[#0369a1] text-white px-3 md:px-6 py-2 md:py-3 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-2 md:gap-3">
-          <span className="text-xl md:text-2xl">🛒</span>
-          <div>
-            <p className="font-bold text-sm md:text-lg leading-tight">CompuTek — Caisse</p>
-            <p className="text-blue-200 text-xs hidden sm:block">{dateStr} · {timeStr}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 md:gap-6 text-sm">
-          <div className="text-center">
-            <p className="text-blue-200 text-xs">Articles</p>
-            <p className="font-bold text-base md:text-lg">{cartItems.reduce((s, i) => s + i.quantity, 0)}</p>
-          </div>
-          <div className="text-center">
-            <p className="text-blue-200 text-xs">Total</p>
-            <p className="font-bold text-base md:text-lg">{formatCurrency(total)}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-3 flex-shrink-0 shadow-sm">
-        <button
-          onClick={() => setShowScanner(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-[#0369a1] hover:bg-[#0284c7] text-white rounded-lg font-medium transition-colors flex-shrink-0"
-          title="Scanner avec la caméra"
-        >
-          <span>📷</span>
+      <div className="shrink-0 bg-white border-b border-dark-200 px-3 sm:px-6 py-3 flex items-center gap-2">
+        <Button icon={Camera} onClick={() => setShowScanner(true)} className="shrink-0" aria-label="Scanner avec la caméra">
           <span className="hidden sm:inline">Caméra</span>
-        </button>
-
-        <div className="flex-1 relative">
+        </Button>
+        <div className="relative flex-1 min-w-0">
+          <ScanBarcode className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-dark-400" />
           <input
             ref={barcodeFieldRef}
             type="text"
@@ -294,44 +454,30 @@ export default function SellerNewSale() {
             onChange={(e) => setPosBarcode(e.target.value)}
             onKeyDown={handlePosBarcodeKey}
             autoFocus
-            placeholder="Scanner ou saisir un code-barres puis Entrée…"
-            className="w-full px-4 py-2.5 border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-dark-900 bg-white placeholder-gray-400"
+            placeholder="Scanner ou saisir un code…"
+            className={`${inputClass} pl-9 font-mono`}
           />
-          {posBarcode && (
-            <button
-              onClick={async () => { await addProductByBarcode(posBarcode.trim()); setPosBarcode(''); focusBarcodeField(); }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded font-medium"
-            >
-              ↵ Ajouter
-            </button>
-          )}
         </div>
-
-        <button
+        <Button
+          variant={showProductPanel ? 'primary' : 'secondary'}
+          icon={Package}
           onClick={() => setShowProductPanel((v) => !v)}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-colors flex-shrink-0 border ${
-            showProductPanel
-              ? 'bg-green-600 text-white border-green-600'
-              : 'bg-white text-dark-700 border-gray-300 hover:bg-gray-50'
-          }`}
+          className="shrink-0"
+          aria-label="Chercher un produit"
         >
-          <span>📦</span>
-          <span className="hidden sm:inline">{showProductPanel ? 'Masquer produits' : 'Chercher produit'}</span>
-        </button>
+          <span className="hidden sm:inline">Produits</span>
+        </Button>
       </div>
 
       {showProductPanel && (
-        <div className="bg-white border-b border-gray-200 px-6 py-4 flex-shrink-0">
-          <div className="mb-3">
-            <input
-              type="text"
-              placeholder="Rechercher par nom ou code-barres..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-dark-900"
-            />
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+        <div className="shrink-0 bg-white border-b border-dark-200 px-3 sm:px-6 py-3 space-y-3 max-h-[45vh] overflow-y-auto">
+          <SearchInput
+            placeholder="Rechercher par nom ou code..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-md"
+          />
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-2">
             {paginatedProducts.map((product) => {
               const stock = getInventoryQuantity(product.id);
               const outOfStock = stock <= 0;
@@ -341,462 +487,186 @@ export default function SellerNewSale() {
                   type="button"
                   disabled={outOfStock}
                   onClick={() => { addToCart(product, 1); focusBarcodeField(); }}
-                  className={`flex flex-col items-start p-3 rounded-lg border text-left transition-all ${
-                    outOfStock
-                      ? 'bg-gray-50 border-gray-200 opacity-50 cursor-not-allowed'
-                      : 'bg-white border-gray-200 hover:border-blue-400 hover:bg-blue-50 cursor-pointer'
-                  }`}
+                  className="flex flex-col items-start rounded-lg border border-dark-200 p-3 text-left transition-colors hover:border-primary-400 hover:bg-primary-50 disabled:opacity-50 disabled:hover:bg-white disabled:hover:border-dark-200"
                 >
-                  <p className="font-semibold text-dark-900 text-xs leading-tight line-clamp-2">{product.name}</p>
-                  <p className="text-primary-600 font-bold text-sm mt-1">{formatCurrency(product.price_selling)}</p>
-                  <p className={`text-xs mt-0.5 font-medium ${outOfStock ? 'text-red-500' : 'text-green-600'}`}>
-                    {outOfStock ? 'Rupture' : `Stock: ${stock}`}
+                  <p className="text-sm font-medium text-dark-900 leading-tight line-clamp-2">{product.name}</p>
+                  <p className="mt-1 text-sm font-bold text-primary-700">{formatCurrency(product.price_selling)}</p>
+                  <p className={`text-xs font-medium ${outOfStock ? 'text-red-600' : 'text-dark-500'}`}>
+                    {outOfStock ? 'Rupture' : `Stock : ${stock}`}
                   </p>
                 </button>
               );
             })}
             {filteredProducts.length === 0 && (
-              <p className="col-span-full text-dark-500 text-sm py-4 text-center">Aucun produit trouvé</p>
+              <p className="col-span-full py-4 text-center text-sm text-dark-500">Aucun produit trouvé</p>
             )}
           </div>
-
           {totalProductPages > 1 && (
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-              <button
-                type="button"
+            <div className="flex items-center justify-between text-sm text-dark-600">
+              <Button
+                variant="secondary"
+                size="icon"
+                icon={ChevronLeft}
                 onClick={() => setProductPage((p) => Math.max(0, p - 1))}
                 disabled={productPage === 0}
-                className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm font-medium text-dark-700 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                ← Précédent
-              </button>
-              <span className="text-xs text-dark-500">
-                Page <span className="font-semibold text-dark-800">{productPage + 1}</span> / {totalProductPages}
-                <span className="ml-2 text-dark-400">({filteredProducts.length} produits)</span>
-              </span>
-              <button
-                type="button"
+                aria-label="Page précédente"
+              />
+              <span>{productPage + 1} / {totalProductPages}</span>
+              <Button
+                variant="secondary"
+                size="icon"
+                icon={ChevronRight}
                 onClick={() => setProductPage((p) => Math.min(totalProductPages - 1, p + 1))}
                 disabled={productPage >= totalProductPages - 1}
-                className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm font-medium text-dark-700 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                Suivant →
-              </button>
+                aria-label="Page suivante"
+              />
             </div>
           )}
         </div>
       )}
 
-      <div className="flex-1 flex flex-col md:flex-row gap-0 min-h-0 overflow-hidden">
-
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden min-h-0" style={{minHeight: '40vh'}}>
-          <div className="bg-gray-200 px-4 py-2 grid grid-cols-12 gap-2 text-xs font-semibold text-dark-700 uppercase tracking-wide flex-shrink-0">
-            <div className="col-span-5">Désignation</div>
-            <div className="col-span-2 text-center">P.U.</div>
-            <div className="col-span-2 text-center">Qté</div>
-            <div className="col-span-2 text-right">Total</div>
-            <div className="col-span-1"></div>
-          </div>
-
-<div className="flex-1 overflow-y-auto bg-white">
-  {cartItems.length === 0 ? (
-    <div className="flex flex-col items-center justify-center h-full text-dark-400 py-16">
-      <span className="text-6xl mb-4">🛒</span>
-      <p className="text-lg font-medium">Panier vide</p>
-      <p className="text-sm mt-1">
-        Scannez un code-barres ou cherchez un produit
-      </p>
-    </div>
-  ) : (
-    cartItems.map((item, idx) => (
-      <div
-        key={item.productId}
-        className={`border-b border-gray-100 ${
-          idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-        }`}
-      >
-        <div className="hidden md:grid grid-cols-12 gap-2 px-4 py-3 items-center">
-          <div className="col-span-5">
-            <p className="font-medium text-dark-900 text-sm leading-tight">
-              {item.name}
-            </p>
-          </div>
-
-          <div className="col-span-2 text-center text-sm text-dark-600">
-            {formatCurrency(item.price)}
-          </div>
-
-          <div className="col-span-2 flex justify-center">
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() =>
-                  updateCartQty(item.productId, item.quantity - 1)
-                }
-                className="w-7 h-7 rounded bg-gray-200 hover:bg-gray-300 font-bold"
-              >
-                −
-              </button>
-
-              <input
-                type="number"
-                min="1"
-                max={getInventoryQuantity(item.productId)}
-                value={item.quantity}
-                onChange={(e) =>
-                  updateCartQty(
-                    item.productId,
-                    parseInt(e.target.value, 10) || 1
-                  )
-                }
-                className="w-12 text-center border border-gray-300 rounded text-sm font-semibold"
-              />
-
-              <button
-                onClick={() =>
-                  updateCartQty(item.productId, item.quantity + 1)
-                }
-                className="w-7 h-7 rounded bg-gray-200 hover:bg-gray-300 font-bold"
-              >
-                +
-              </button>
-            </div>
-          </div>
-
-          <div className="col-span-2 text-right font-semibold text-primary-700 text-sm">
-            {formatCurrency(item.total)}
-          </div>
-
-          <div className="col-span-1 flex justify-center">
-            <button
-              onClick={() => updateCartQty(item.productId, 0)}
-              className="text-red-500 hover:text-red-700 text-lg"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-
-        <div className="md:hidden p-3 space-y-3">
-          <div className="flex justify-between items-start gap-2">
-            <div className="flex-1">
-              <p className="font-semibold text-sm text-dark-900">
-                {item.name}
-              </p>
-              <p className="text-xs text-dark-500 mt-1">
-                PU: {formatCurrency(item.price)}
-              </p>
-            </div>
-
-            <button
-              onClick={() => updateCartQty(item.productId, 0)}
-              className="text-red-500 text-xl px-2"
-            >
-              ×
-            </button>
-          </div>
-
-          <div className="flex items-center justify-between">
+      <div className="flex-1 min-h-0 flex flex-col md:flex-row">
+        <section className="flex-1 min-w-0 min-h-0 flex flex-col bg-white">
+          <header className="shrink-0 flex items-center justify-between px-4 sm:px-6 py-3 border-b border-dark-200">
+            <h2 className="font-semibold text-dark-900">Panier</h2>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() =>
-                  updateCartQty(item.productId, item.quantity - 1)
-                }
-                className="w-9 h-9 rounded-lg bg-gray-200 text-lg font-bold"
-              >
-                −
-              </button>
-
-              <input
-                type="number"
-                min="1"
-                max={getInventoryQuantity(item.productId)}
-                value={item.quantity}
-                onChange={(e) =>
-                  updateCartQty(
-                    item.productId,
-                    parseInt(e.target.value, 10) || 1
-                  )
-                }
-                className="w-14 h-9 text-center border border-gray-300 rounded-lg font-semibold"
-              />
-
-              <button
-                onClick={() =>
-                  updateCartQty(item.productId, item.quantity + 1)
-                }
-                className="w-9 h-9 rounded-lg bg-gray-200 text-lg font-bold"
-              >
-                +
-              </button>
-            </div>
-
-            <div className="text-right">
-              <p className="text-xs text-dark-500">Total</p>
-              <p className="font-bold text-primary-700">
-                {formatCurrency(item.total)}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    ))
-  )}
-</div>
-
-          {cartItems.length > 0 && (
-            <div className="bg-gray-100 border-t border-gray-300 px-4 py-2 flex-shrink-0 flex justify-end gap-8 text-sm">
-              <span className="text-dark-600">Sous-total : <span className="font-semibold text-dark-900">{formatCurrency(subtotal)}</span></span>
-              {discountAmount > 0 && (
-                <span className="text-orange-600">
-                  Remise : <span className="font-semibold">−{formatCurrency(discountAmount)}</span>
-                  {derivedDiscountPercent > 0 && (
-                    <span className="ml-2 text-xs text-dark-500">({derivedDiscountPercent.toFixed(1)}%)</span>
-                  )}
-                </span>
+              <Badge tone="primary">{itemCount} article(s)</Badge>
+              {cartItems.length > 0 && (
+                <Button variant="danger-ghost" size="sm" icon={Trash2} onClick={() => { resetSale(); focusBarcodeField(); }}>
+                  <span className="hidden sm:inline">Vider</span>
+                </Button>
               )}
-              <span className="text-primary-700 font-bold text-base">Total : {formatCurrency(total)}</span>
             </div>
-          )}
-        </div>
+          </header>
 
-        <div className="w-full md:w-80 flex-shrink-0 flex flex-col bg-white border-t md:border-t-0 md:border-l border-gray-200 overflow-y-auto max-h-96 md:max-h-none">
-          <div className="p-4 border-b border-gray-200 bg-gray-50">
-            <h3 className="font-bold text-dark-900 text-base">Finaliser la vente</h3>
-          </div>
-
-          <div className="flex-1 p-4 space-y-4">
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-semibold text-dark-700 uppercase tracking-wide">Remise</label>
-                <div className="flex bg-gray-100 rounded-md overflow-hidden text-xs font-semibold">
-                  {['percent', 'amount'].map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => setDiscountMode(mode)}
-                      className={`px-2 py-1 border border-gray-300 first:rounded-l-md last:rounded-r-md ${
-                        discountMode === mode
-                          ? 'bg-white text-primary-700'
-                          : 'text-dark-500'
-                      }`}
-                    >
-                      {mode === 'percent' ? '% %' : 'FCFA'}
-                    </button>
+          <div className="flex-1 overflow-y-auto">
+            {cartItems.length === 0 ? (
+              <EmptyState icon={ShoppingCart} title="Panier vide" description="Scannez un code ou cherchez un produit." />
+            ) : (
+              <>
+                <ul className="md:hidden divide-y divide-dark-100">
+                  {cartItems.map((item) => (
+                    <li key={item.productId} className="p-4 space-y-2">
+                      <div className="flex items-start gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-dark-900">{item.name}</p>
+                          <p className="text-xs text-dark-500">{formatCurrency(item.price)} / unité</p>
+                        </div>
+                        {removeButton(item)}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        {qtyControl(item, 'h-9 w-9')}
+                        <p className="font-bold text-dark-900">{formatCurrency(item.total)}</p>
+                      </div>
+                    </li>
                   ))}
-                </div>
-              </div>
-              {discountMode === 'percent' ? (
-                <input
-                  type="number"
-                  value={discountPercentInput}
-                  onChange={(e) => setDiscountPercentInput(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-dark-900 bg-white"
-                  min="0"
-                  max="100"
-                  placeholder="% de remise"
-                />
-              ) : (
-                <input
-                  type="number"
-                  value={discountAmountInput}
-                  onChange={(e) => setDiscountAmountInput(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-dark-900 bg-white"
-                  min="0"
-                  placeholder="Montant en FCFA"
-                />
-              )}
-              {discountAmount > 0 && (
-                <p className="text-xs text-dark-500 mt-1">
-                  Équivaut à −{formatCurrency(discountAmount)} ({derivedDiscountPercent.toFixed(1)}%)
-                </p>
-              )}
-            </div>
+                </ul>
 
-            <div>
-              <label className="block text-xs font-semibold text-dark-700 mb-1 uppercase tracking-wide">Mode de paiement</label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { value: 'cash', label: '💵 Cash' },
-                  { value: 'paiement_marchand', label: '📲 Paiement marchand' },
-                ].map((m) => (
-                  <button
-                    key={m.value}
-                    type="button"
-                    onClick={() => setPaymentMethod(m.value)}
-                    className={`py-2 px-2 rounded-lg text-sm font-medium border transition-all ${
-                      paymentMethod === m.value
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-dark-700 border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-dark-700 mb-1 uppercase tracking-wide">Client (optionnel)</label>
-              <div className="space-y-2">
-                <select
-                  value={selectedClientId}
-                  onChange={(e) => setSelectedClientId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-dark-900 text-sm"
-                >
-                  <option value="">Sans client</option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}{c.phone ? ` – ${c.phone}` : ''}</option>
-                  ))}
-                </select>
-                {!showNewClient ? (
-                  <button 
-                    type="button" 
-                    onClick={() => setShowNewClient(true)} 
-                    className="w-full py-2 px-3 bg-[#0369a1] hover:bg-[#0284c7] text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
-                  >
-                    <span>➕</span>
-                    <span>Ajouter un nouveau client</span>
-                  </button>
-                ) : (
-                  <form onSubmit={handleAddClient} className="space-y-2 mt-2 pt-2 border-t border-gray-200">
-                    <input 
-                      type="text" 
-                      placeholder="Nom *" 
-                      value={newClient.name} 
-                      onChange={(e) => setNewClient((p) => ({ ...p, name: e.target.value }))} 
-                      className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-dark-900 bg-white text-sm" 
-                      required 
-                    />
-                    <input 
-                      type="email" 
-                      placeholder="Email" 
-                      value={newClient.email} 
-                      onChange={(e) => setNewClient((p) => ({ ...p, email: e.target.value }))} 
-                      className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-dark-900 bg-white text-sm" 
-                    />
-                    <input 
-                      type="tel" 
-                      placeholder="Téléphone" 
-                      value={newClient.phone} 
-                      onChange={(e) => setNewClient((p) => ({ ...p, phone: e.target.value }))} 
-                      className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-dark-900 bg-white text-sm" 
-                    />
-                    <input 
-                      type="text" 
-                      placeholder="Adresse" 
-                      value={newClient.address} 
-                      onChange={(e) => setNewClient((p) => ({ ...p, address: e.target.value }))} 
-                      className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-dark-900 bg-white text-sm" 
-                    />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <input 
-                        type="text" 
-                        placeholder="RCCM" 
-                        value={newClient.rccm} 
-                        onChange={(e) => setNewClient((p) => ({ ...p, rccm: e.target.value }))} 
-                        className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-dark-900 bg-white text-sm" 
-                      />
-                      <input 
-                        type="text" 
-                        placeholder="Boîte postale" 
-                        value={newClient.postal_box} 
-                        onChange={(e) => setNewClient((p) => ({ ...p, postal_box: e.target.value }))} 
-                        className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-dark-900 bg-white text-sm" 
-                      />
-                    </div>
-                    <input 
-                      type="text" 
-                      placeholder="NC" 
-                      value={newClient.nc} 
-                      onChange={(e) => setNewClient((p) => ({ ...p, nc: e.target.value }))} 
-                      className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-dark-900 bg-white text-sm" 
-                    />
-                    <div className="flex gap-2">
-                      <button 
-                        type="submit" 
-                        disabled={isAddingClient}
-                        className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors text-white ${
-                          isAddingClient ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#047857] hover:bg-[#059669]'
-                        }`}
-                      >
-                        {isAddingClient ? 'Enregistrement...' : 'Enregistrer'}
-                      </button>
-                      <button 
-                        type="button" 
-                        onClick={() => {
-                          setShowNewClient(false);
-                          setNewClient({ name: '', email: '', phone: '', address: '', rccm: '', postal_box: '', nc: '' });
-                        }} 
-                        className="flex-1 py-1.5 border border-gray-300 text-dark-700 rounded-lg text-sm hover:bg-gray-50 transition-colors"
-                      >
-                        Annuler
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-dark-700 mb-1 uppercase tracking-wide">Notes</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-dark-900 bg-white text-sm resize-none"
-                placeholder="Remarques..."
-                rows="2"
-              />
-            </div>
-          </div>
-
-          <div className="p-4 border-t border-gray-200 bg-gray-50 space-y-3 flex-shrink-0">
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between text-dark-600">
-                <span>Sous-total</span>
-                <span className="font-medium">{formatCurrency(subtotal)}</span>
-              </div>
-              {discountAmount > 0 && (
-                <div className="flex justify-between text-orange-600">
-                  <span>Remise ({derivedDiscountPercent.toFixed(1)}%)</span>
-                  <span className="font-medium">−{formatCurrency(discountAmount)}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-lg font-bold text-primary-700 pt-1 border-t border-gray-300">
-                <span>TOTAL</span>
-                <span>{formatCurrency(total)}</span>
-              </div>
-            </div>
-
-            <button
-              onClick={async () => { await handleCompleteSale(); focusBarcodeField(); }}
-              disabled={cartItems.length === 0 || isGeneratingInvoice}
-              className="w-full bg-[#047857] hover:bg-[#059669] disabled:bg-gray-400 text-white font-bold py-4 rounded-xl transition-all disabled:cursor-not-allowed flex items-center justify-center gap-2 text-base shadow-md"
-            >
-              {isGeneratingInvoice ? (
-                <>
-                  <span className="animate-spin">⏳</span>
-                  <span>Génération de la facture...</span>
-                </>
-              ) : (
-                <>
-                  <span>✅</span>
-                  <span>Valider la vente</span>
-                </>
-              )}
-            </button>
-
-            {cartItems.length > 0 && (
-              <button
-                type="button"
-                onClick={() => { resetSale(); focusBarcodeField(); }}
-                className="w-full py-2 text-sm text-red-500 hover:text-red-700 font-medium"
-              >
-                🗑️ Vider le panier
-              </button>
+                <table className="hidden md:table w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-dark-200 bg-dark-50 text-left text-xs font-semibold uppercase tracking-wide text-dark-500">
+                      <th className="py-2.5 px-4">Désignation</th>
+                      <th className="py-2.5 px-4 text-right">P.U.</th>
+                      <th className="py-2.5 px-4 text-center">Qté</th>
+                      <th className="py-2.5 px-4 text-right">Total</th>
+                      <th className="py-2.5 px-2 w-10" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-dark-100">
+                    {cartItems.map((item) => (
+                      <tr key={item.productId}>
+                        <td className="py-2.5 px-4 font-medium text-dark-900">{item.name}</td>
+                        <td className="py-2.5 px-4 text-right text-dark-600 whitespace-nowrap">{formatCurrency(item.price)}</td>
+                        <td className="py-2.5 px-4"><div className="flex justify-center">{qtyControl(item)}</div></td>
+                        <td className="py-2.5 px-4 text-right font-semibold whitespace-nowrap">{formatCurrency(item.total)}</td>
+                        <td className="py-2.5 px-2">{removeButton(item)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
             )}
           </div>
-        </div>
+
+          <div className="md:hidden shrink-0 border-t border-dark-200 bg-white p-3 flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-dark-500">Total</p>
+              <p className="text-lg font-bold text-dark-900 truncate">{formatCurrency(total)}</p>
+            </div>
+            <Button size="lg" disabled={cartItems.length === 0} onClick={() => setShowCheckout(true)}>
+              Encaisser
+            </Button>
+          </div>
+        </section>
+
+        <aside className="hidden md:flex w-80 lg:w-96 shrink-0 flex-col border-l border-dark-200 bg-white">
+          <div className="flex-1 overflow-y-auto p-5">{checkoutFields}</div>
+          <div className="shrink-0 border-t border-dark-200 bg-dark-50 p-5 space-y-4">
+            {totals}
+            {validateButton}
+          </div>
+        </aside>
       </div>
+
+      {showCheckout && (
+        <div className="md:hidden">
+          <Modal
+            title="Encaissement"
+            onClose={() => setShowCheckout(false)}
+            footer={<div className="w-full space-y-3">{totals}{validateButton}</div>}
+          >
+            {checkoutFields}
+          </Modal>
+        </div>
+      )}
+
+      {showNewClient && (
+        <Modal
+          title="Nouveau client"
+          size="md"
+          onClose={() => {
+            setShowNewClient(false);
+            setNewClient(emptyClient);
+          }}
+          footer={
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowNewClient(false);
+                  setNewClient(emptyClient);
+                }}
+              >
+                Annuler
+              </Button>
+              <Button type="submit" form="new-client-form" loading={isAddingClient}>Enregistrer</Button>
+            </>
+          }
+        >
+          <form id="new-client-form" onSubmit={handleAddClient} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {[
+              { key: 'name', label: 'Nom *', type: 'text', required: true, full: true },
+              { key: 'phone', label: 'Téléphone', type: 'tel' },
+              { key: 'email', label: 'Email', type: 'email' },
+              { key: 'address', label: 'Adresse', type: 'text', full: true },
+              { key: 'rccm', label: 'RCCM', type: 'text' },
+              { key: 'postal_box', label: 'Boîte postale', type: 'text' },
+              { key: 'nc', label: 'NC', type: 'text' },
+            ].map((f) => (
+              <div key={f.key} className={f.full ? 'sm:col-span-2' : ''}>
+                <label className={labelClass}>{f.label}</label>
+                <input
+                  type={f.type}
+                  value={newClient[f.key]}
+                  onChange={(e) => setNewClient((p) => ({ ...p, [f.key]: e.target.value }))}
+                  className={inputClass}
+                  required={f.required}
+                />
+              </div>
+            ))}
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }

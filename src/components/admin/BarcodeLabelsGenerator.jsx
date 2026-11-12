@@ -1,5 +1,7 @@
 import React, { useMemo } from 'react';
 import { toast } from 'react-hot-toast';
+import { Printer, Tags } from 'lucide-react';
+import { Button, EmptyState, Modal } from '../ui';
 import JsBarcode from 'jsbarcode';
 import { formatCurrency, getProductCodes } from '../../utils/helpers';
 
@@ -70,41 +72,34 @@ export default function BarcodeLabelsGenerator({ products, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6">
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
-          <h3 className="text-xl font-bold text-dark-900">Imprimer les étiquettes</h3>
-          <button onClick={onClose} className="text-dark-700 hover:text-dark-900 font-bold text-lg" aria-label="Fermer">✕</button>
-        </div>
-
-        {labels.length === 0 ? (
-          <p className="py-8 text-center text-dark-600">Aucun produit n'a de code-barres.</p>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-sm text-dark-700">
-              {labels.length} étiquette(s) sur {totalPages} page(s) A4 (3 × 10). Une étiquette par code.
-            </p>
-            <div className="grid grid-cols-3 gap-2 border border-gray-200 rounded-lg p-3 bg-gray-50">
-              {labels.slice(0, 6).map((l) => (
-                <div key={l.code} className="border border-gray-300 rounded p-2 text-center text-xs bg-white">
-                  <p className="font-semibold truncate text-gray-800">{l.name}</p>
-                  <p className="font-mono text-gray-600 truncate">{l.code}</p>
-                  <p className="font-bold">{formatCurrency(l.price)}</p>
-                </div>
-              ))}
-            </div>
+    <Modal
+      title="Imprimer les étiquettes"
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>Annuler</Button>
+          {labels.length > 0 && <Button icon={Printer} onClick={print}>Imprimer</Button>}
+        </>
+      }
+    >
+      {labels.length === 0 ? (
+        <EmptyState icon={Tags} title="Aucun produit n'a de code-barres" />
+      ) : (
+        <div className="space-y-4">
+          <p className="text-sm text-dark-600">
+            {labels.length} étiquette(s) sur {totalPages} page(s) A4 (3 × 10), une par code.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 rounded-lg border border-dark-200 bg-dark-50 p-3">
+            {labels.slice(0, 6).map((l) => (
+              <div key={l.code} className="rounded border border-dark-200 bg-white p-2 text-center text-xs">
+                <p className="font-semibold truncate text-dark-800">{l.name}</p>
+                <p className="font-mono text-dark-500 truncate">{l.code}</p>
+                <p className="font-bold">{formatCurrency(l.price)}</p>
+              </div>
+            ))}
           </div>
-        )}
-
-        <div className="flex gap-3 justify-end mt-6 pt-4 border-t border-gray-200">
-          <button onClick={onClose} className="px-6 py-2 border border-gray-300 text-dark-900 font-medium rounded-lg hover:bg-gray-50">Annuler</button>
-          {labels.length > 0 && (
-            <button onClick={print} className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg">
-              🖨️ Imprimer
-            </button>
-          )}
         </div>
-      </div>
-    </div>
+      )}
+    </Modal>
   );
 }

@@ -1,29 +1,10 @@
 import React from 'react';
+import { LogOut, Menu } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
-export default function Header({ title, onToggleSidebar }) {
+export default function Header({ onToggleSidebar }) {
   const { user, logout } = useAuthStore();
-
-  const displayName = React.useMemo(() => {
-    const name = user?.name?.trim();
-    if (name && name.length > 0) {
-      return name;
-    }
-
-    const email = user?.email?.trim();
-    if (email && email.length > 0) {
-      return email.split('@')[0];
-    }
-
-    const roleFallback = user?.role?.trim();
-    if (roleFallback && roleFallback.length > 0) {
-      return roleFallback;
-    }
-
-    return 'Utilisateur';
-  }, [user?.name, user?.email, user?.role]);
-
-  const avatarInitial = displayName?.charAt(0)?.toUpperCase() || 'U';
+  const displayName = user?.name?.trim() || user?.email?.split('@')[0] || 'Utilisateur';
 
   const handleLogout = () => {
     logout();
@@ -31,49 +12,38 @@ export default function Header({ title, onToggleSidebar }) {
   };
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 px-3 sm:px-6 py-3 sm:py-4 flex-shrink-0">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+    <header className="sticky top-0 z-30 h-16 shrink-0 bg-white border-b border-dark-200">
+      <div className="h-full flex items-center justify-between gap-3 px-3 sm:px-6">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             onClick={onToggleSidebar}
-            className="md:hidden p-2 rounded-lg text-dark-700 hover:bg-gray-100 flex-shrink-0"
+            className="md:hidden h-10 w-10 inline-flex items-center justify-center rounded-lg text-dark-600 hover:bg-dark-100"
             aria-label="Ouvrir le menu"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+            <Menu className="h-5 w-5" />
           </button>
-          <div className="relative w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0">
-            <div className="relative w-full h-full border border-white/60 overflow-hidden bg-white/95 backdrop-blur ">
-              <img src="/logo.jpg" alt="CompuTek Solutions" className="w-full h-full" />
-            </div>
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-base sm:text-xl md:text-2xl font-bold text-dark-900 truncate">{title || 'CompuTek Solutions'}</h1>
-            <p className="text-xs sm:text-sm text-dark-500 hidden sm:block">Gestion Commerciale</p>
+          <img src="/logo.jpg" alt="" className="h-9 w-9 sm:h-10 sm:w-10 object-contain shrink-0" />
+          <div className="min-w-0 leading-tight">
+            <p className="font-bold text-dark-900 truncate">CompuTek Solutions</p>
+            <p className="hidden sm:block text-xs text-dark-500">Gestion commerciale</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-          <div className="text-right hidden sm:block">
-            <p className="font-semibold text-dark-900 text-sm sm:text-base">{displayName}</p>
-            <p className="text-xs sm:text-sm text-dark-500 capitalize">
-              {user?.role === 'admin' ? 'Administrateur' : 'Vendeur'}
-            </p>
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="hidden sm:block text-right leading-tight">
+            <p className="text-sm font-semibold text-dark-900">{displayName}</p>
+            <p className="text-xs text-dark-500">{user?.role === 'admin' ? 'Administrateur' : 'Vendeur'}</p>
           </div>
-
-          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-gray-500 to-gray-600 rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-semibold text-sm" translate="no">
-              {avatarInitial}
-            </span>
+          <div className="hidden sm:flex h-9 w-9 rounded-full bg-primary-100 text-primary-700 items-center justify-center text-sm font-semibold">
+            {displayName.charAt(0).toUpperCase()}
           </div>
-
           <button
             onClick={handleLogout}
-            className="px-2 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-1 sm:gap-2 shadow-md text-sm"
+            className="h-10 inline-flex items-center gap-2 rounded-lg px-2 sm:px-3 text-sm font-medium text-dark-600 hover:bg-red-50 hover:text-red-700"
+            title="Déconnexion"
           >
-            <span>🚪</span>
-            <span className="hidden sm:inline">Déconnexion</span>
+            <LogOut className="h-5 w-5" />
+            <span className="hidden lg:inline">Déconnexion</span>
           </button>
         </div>
       </div>

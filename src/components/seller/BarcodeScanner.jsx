@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
-import './BarcodeScanner.css';
+import { AlertTriangle, Camera, Monitor, ScanBarcode, SwitchCamera, X } from 'lucide-react';
 
 export default function BarcodeScanner({ onDetected, onClose }) {
   const html5QrcodeRef = useRef(null);
@@ -172,88 +172,80 @@ export default function BarcodeScanner({ onDetected, onClose }) {
 
   const isCameraOptionActive = (device) => device && device.id === selectedCameraId;
 
-  const renderCameraPill = (device, label, icon) => (
+  const renderCameraPill = (device, label, Icon) => (
     <button
       type="button"
       key={label}
       disabled={!device}
       onClick={() => device && setSelectedCameraId(device.id)}
-      className={`camera-pill ${isCameraOptionActive(device) ? 'is-active' : ''}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-40 ${
+        isCameraOptionActive(device) ? 'bg-white text-dark-900' : 'bg-white/10 text-white hover:bg-white/20'
+      }`}
       title={device ? device.label : 'Caméra non disponible'}
     >
-      <span className="camera-pill-icon">{icon}</span>
-      <span>{label}</span>
+      <Icon className="h-4 w-4" />
+      {label}
     </button>
   );
 
-  const renderCameraOptions = () => {
-    if (cameras.length === 0) {
-      return null;
-    }
-
-    return (
-      <>
-        <div className="camera-pill-group">
-          {renderCameraPill(quickAccessCameras.back, 'Caméra arrière', '📹')}
-          {renderCameraPill(quickAccessCameras.front, 'Caméra avant', '🤳')}
-          {renderCameraPill(quickAccessCameras.desktop, 'Webcam', '💻')}
-        </div>
-
-        {cameras.length > 1 && (
-          <select
-            className="camera-select"
-            aria-label="Choisir une caméra"
-            value={selectedCameraId ?? ''}
-            onChange={(event) => setSelectedCameraId(event.target.value)}
-          >
-            {cameras.map((device, index) => (
-              <option key={device.id} value={device.id}>
-                {device.label || `Caméra ${index + 1}`}
-              </option>
-            ))}
-          </select>
-        )}
-      </>
-    );
-  };
-
   return (
-    <div className="barcode-scanner-overlay">
-      <div className="barcode-scanner-container">
-        <div className="scanner-header">
-          <h3>Scanner Code-barres</h3>
-          <button type="button" className="close-btn" onClick={onClose} title="Fermer">
-            <span className="close-btn-icon">✕</span>
-            <span className="close-btn-text">Fermer</span>
+    <div className="fixed inset-0 z-[1002] flex items-center justify-center bg-dark-900/80 sm:p-4">
+      <div className="flex h-full w-full flex-col overflow-hidden bg-dark-900 text-white sm:h-auto sm:max-w-lg sm:rounded-2xl">
+        <div className="flex items-center justify-between px-4 py-3">
+          <h3 className="flex items-center gap-2 font-semibold">
+            <ScanBarcode className="h-5 w-5" /> Scanner un code
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-10 w-10 inline-flex items-center justify-center rounded-lg hover:bg-white/10"
+            aria-label="Fermer"
+          >
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div id="qr-reader" className="scanner-video"></div>
+        <div id="qr-reader" className="relative flex-1 min-h-[300px] bg-black sm:min-h-[360px] [&>div]:h-full [&>div]:w-full" />
 
-        <div className="scanner-info">
-          <div className="camera-switcher">
-            <p className="camera-switcher-title">Choisissez la caméra à utiliser</p>
-            {renderCameraOptions()}
+        <div className="space-y-3 px-4 py-4 text-center text-sm">
+          {cameras.length > 0 && (
+            <div className="flex flex-wrap justify-center gap-2">
+              {renderCameraPill(quickAccessCameras.back, 'Arrière', Camera)}
+              {renderCameraPill(quickAccessCameras.front, 'Avant', SwitchCamera)}
+              {renderCameraPill(quickAccessCameras.desktop, 'Webcam', Monitor)}
+            </div>
+          )}
+          {cameras.length > 1 && (
+            <select
+              className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
+              aria-label="Choisir une caméra"
+              value={selectedCameraId ?? ''}
+              onChange={(event) => setSelectedCameraId(event.target.value)}
+            >
+              {cameras.map((device, index) => (
+                <option key={device.id} value={device.id} className="text-dark-900">
+                  {device.label || `Caméra ${index + 1}`}
+                </option>
+              ))}
+            </select>
+          )}
 
-            {isInitialising && <p className="camera-meta">Initialisation des caméras…</p>}
-            {!isInitialising && isSwitchingCamera && <p className="camera-meta">Changement de caméra…</p>}
-            {cameraError && <p className="camera-error">{cameraError}</p>}
-            {!isSecureOrigin && (
-              <p className="camera-warning">
-                ⚠️ Le décodage des codes-barres 1D nécessite un contexte sécurisé (HTTPS ou localhost).
-                Ouvrez cette page via https:// ou utilisez l'application déployée pour activer la lecture.
-              </p>
-            )}
-            {isSecureOrigin && !supportsLinearCodes && (
-              <p className="camera-warning">
-                ⚠️ Votre navigateur ne supporte pas encore BarcodeDetector. Essayez avec Chrome/Edge/Opera
-                version récente ou activez les flags expérimentaux.
-              </p>
-            )}
-          </div>
-
-          <p>📱 Pointez la caméra sélectionnée sur le code-barres</p>
-          <p>L'article sera automatiquement ajouté au panier</p>
+          {isInitialising && <p className="text-white/70">Initialisation de la caméra…</p>}
+          {!isInitialising && isSwitchingCamera && <p className="text-white/70">Changement de caméra…</p>}
+          {cameraError && <p className="text-red-300">{cameraError}</p>}
+          {!isSecureOrigin && (
+            <p className="flex items-start gap-2 text-left text-amber-300">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              La lecture des codes-barres nécessite une connexion sécurisée (https).
+            </p>
+          )}
+          {isSecureOrigin && !supportsLinearCodes && (
+            <p className="flex items-start gap-2 text-left text-amber-300">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              Ce navigateur ne lit pas tous les codes-barres. Utilisez Chrome ou Edge récent.
+            </p>
+          )}
+          <p className="text-white/70">Pointez la caméra vers le code-barres ou le QR code.</p>
         </div>
       </div>
     </div>

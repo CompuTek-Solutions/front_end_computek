@@ -1,10 +1,26 @@
 import React, { useMemo, useEffect, useState } from 'react';
+import { Wallet, AlertTriangle, PackageX, Package, Tags, Save } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useProductStore } from '../../store/productStore';
-import { formatCurrency, normalizeForSearch, getProductCodes, productMatchesSearch } from '../../utils/helpers';
-import { CodeList } from '../../components/admin/ProductList';
+import { formatCurrency, normalizeForSearch, getProductCodes, productMatchesSearch, stockTone } from '../../utils/helpers';
+import CodeList from '../../components/admin/CodeList';
 import BarcodeLabelsGenerator from '../../components/admin/BarcodeLabelsGenerator';
 import Pagination from '../../components/common/Pagination';
-import toast from 'react-hot-toast';
+import {
+  Badge, Button, Card, EmptyState, PageHeader, SearchInput, SegmentedControl, StatCard,
+} from '../../components/ui';
+
+const STOCK_FILTERS = [
+  { value: 'all', label: 'Tous' },
+  { value: 'low', label: 'Faible' },
+  { value: 'out', label: 'Rupture' },
+];
+
+const SORT_OPTIONS = [
+  { value: 'name', label: 'Nom' },
+  { value: 'quantity', label: 'Quantité' },
+  { value: 'value', label: 'Valeur' },
+];
 
 export default function AdminInventory() {
   const { products, inventory, fetchProducts, fetchInventory, updateInventoryQuantity } = useProductStore();
@@ -23,119 +39,111 @@ export default function AdminInventory() {
     fetchInventory().catch(() => {});
   }, [fetchProducts, fetchInventory]);
 
+  const allItems = useMemo(
+    () =>
+      products.map((product) => ({
+        id: product.id,
+        name: product.name,
+        codes: getProductCodes(product),
+        price: Number(product.price_selling) || 0,
+        quantity: inventory.find((i) => i.product_id === product.id)?.quantity_on_hand ?? 0,
+      })),
+    [products, inventory]
+  );
+
   const inventoryList = useMemo(() => {
-    const normalizedSearchTerm = normalizeForSearch(searchTerm);
-    let list = products.map((product) => ({
-      id: product.id,
-      name: product.name,
-      codes: getProductCodes(product),
-      price: Number(product.price_selling) || 0,
-      quantity: inventory.find((i) => i.product_id === product.id)?.quantity_on_hand ?? 0,
-    }));
+    const term = normalizeForSearch(searchTerm);
+    const direction = sortOrder === 'asc' ? 1 : -1;
+    return allItems
+      .filter((item) => !term || productMatchesSearch({ name: item.name, barcodes: item.codes }, term))
+      .filter((item) =>
+        filterStock === 'low' ? item.quantity > 0 && item.quantity < 10 : filterStock === 'out' ? item.quantity === 0 : true
+      )
+      .sort((a, b) => {
+        if (sortBy === 'quantity') return direction * (a.quantity - b.quantity);
+        if (sortBy === 'value') return direction * (a.price * a.quantity - b.price * b.quantity);
+        return direction * a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+      });
+  }, [allItems, sortBy, sortOrder, filterStock, searchTerm]);
 
-    if (normalizedSearchTerm) {
-      list = list.filter((item) => productMatchesSearch({ name: item.name, barcodes: item.codes }, normalizedSearchTerm));
-    }
+  const totalValue = allItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const lowStockCount = allItems.filter((i) => i.quantity > 0 && i.quantity < 10).length;
+  const outOfStockCount = allItems.filter((i) => i.quantity === 0).length;
 
-    if (filterStock === 'low') {
-      list = list.filter((item) => item.quantity > 0 && item.quantity < 10);
-    } else if (filterStock === 'out') {
-      list = list.filter((item) => item.quantity === 0);
-    }
+  const totalPages = Math.max(1, Math.ceil(inventoryList.length / itemsPerPage));
+  const page = Math.min(currentPage, totalPages);
+  const pageItems = inventoryList.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
-    const compareStrings = (aValue, bValue) =>
-      sortOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-
-    const compareNumbers = (aValue, bValue) =>
-      sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
-
-    const toNumber = (value) => {
-      const num = Number(value);
-      return Number.isFinite(num) ? num : 0;
-    };
-
-    return list.sort((a, b) => {
-      switch (sortBy) {
-        case 'price':
-          return compareNumbers(toNumber(a.price), toNumber(b.price));
-        case 'quantity':
-          return compareNumbers(toNumber(a.quantity), toNumber(b.quantity));
-        case 'value':
-          return compareNumbers(
-            toNumber(a.price) * toNumber(a.quantity),
-            toNumber(b.price) * toNumber(b.quantity)
-          );
-        case 'name':
-        default:
-          return compareStrings(a.name.toLowerCase(), b.name.toLowerCase());
-      }
-    });
-  }, [products, inventory, sortBy, sortOrder, filterStock, searchTerm]);
-
-  const paginatedInventoryList = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return inventoryList.slice(startIndex, endIndex);
-  }, [inventoryList, currentPage, itemsPerPage]);
-
-  const totalPages = useMemo(() => {
-    return Math.ceil(inventoryList.length / itemsPerPage);
-  }, [inventoryList.length, itemsPerPage]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filterStock, sortBy, sortOrder, itemsPerPage, searchTerm]);
-
-  const totalValue = useMemo(() => {
-    return inventoryList.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  }, [inventoryList]);
-
-  const lowStockCount = useMemo(() => {
-    return products.filter((p) => {
-      const qty = inventory.find((i) => i.product_id === p.id)?.quantity_on_hand ?? 0;
-      return qty > 0 && qty < 10;
-    }).length;
-  }, [products, inventory]);
-
-  const outOfStockCount = useMemo(() => {
-    return products.filter((p) => {
-      const qty = inventory.find((i) => i.product_id === p.id)?.quantity_on_hand ?? 0;
-      return qty === 0;
-    }).length;
-  }, [products, inventory]);
-
-  const handleSortChange = (newSortBy) => {
-    if (sortBy === newSortBy) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(newSortBy);
+  const handleSortChange = (value) => {
+    if (sortBy === value) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    else {
+      setSortBy(value);
       setSortOrder('asc');
     }
   };
 
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
+  const saveQuantity = async (item) => {
+    const quantity_on_hand = draftQty[item.id] ?? item.quantity;
+    setSavingId(item.id);
+    try {
+      await updateInventoryQuantity({ product_id: item.id, quantity_on_hand });
+      toast.success('Stock mis à jour');
+      setDraftQty((prev) => {
+        const copy = { ...prev };
+        delete copy[item.id];
+        return copy;
+      });
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erreur lors de la mise à jour du stock');
+    } finally {
+      setSavingId(null);
+    }
   };
 
-  const handleItemsPerPageChange = (newItemsPerPage) => {
-    setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1);
+  const quantityEditor = (item) => {
+    const draft = draftQty[item.id];
+    const dirty = draft !== undefined && draft !== item.quantity;
+    return (
+      <div className="flex items-center justify-end gap-2">
+        <input
+          type="number"
+          inputMode="numeric"
+          min="0"
+          value={draft ?? item.quantity}
+          onChange={(e) => {
+            const n = parseInt(e.target.value, 10);
+            setDraftQty((prev) => ({ ...prev, [item.id]: Number.isFinite(n) ? Math.max(0, n) : 0 }));
+          }}
+          className="h-9 w-20 rounded-lg border border-dark-200 bg-white text-center text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500"
+          aria-label={`Quantité de ${item.name}`}
+        />
+        <Button
+          size="sm"
+          variant={dirty ? 'primary' : 'secondary'}
+          icon={Save}
+          loading={savingId === item.id}
+          disabled={!dirty}
+          onClick={() => saveQuantity(item)}
+          aria-label="Enregistrer"
+        >
+          <span className="hidden lg:inline">Enregistrer</span>
+        </Button>
+      </div>
+    );
   };
+
+  const sortOptions = SORT_OPTIONS.map((opt) => ({
+    ...opt,
+    label: sortBy === opt.value ? `${opt.label} ${sortOrder === 'asc' ? '↑' : '↓'}` : opt.label,
+  }));
 
   return (
-    <div className="space-y-6" translate="no">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-dark-900">Gestion de l'Inventaire</h1>
-        </div>
-        <button
-          onClick={() => setShowBarcodeGenerator(true)}
-          className="px-4 md:px-6 py-2 md:py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all flex items-center space-x-2 font-medium shadow-sm text-sm md:text-base"
-        >
-          <span>🏷️</span>
-          <span>Imprimer étiquettes</span>
-        </button>
-      </div>
+    <>
+      <PageHeader title="Inventaire">
+        <Button variant="secondary" icon={Tags} onClick={() => setShowBarcodeGenerator(true)}>
+          Imprimer étiquettes
+        </Button>
+      </PageHeader>
 
       {showBarcodeGenerator && (
         <BarcodeLabelsGenerator
@@ -144,272 +152,100 @@ export default function AdminInventory() {
         />
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-dark-600 mb-1">Valeur totale</p>
-              <p className="text-2xl font-bold text-primary-600">{formatCurrency(totalValue)}</p>
-            </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <span className="text-blue-700 text-xl">💰</span>
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <StatCard label="Valeur du stock" value={formatCurrency(totalValue)} icon={Wallet} />
+        <StatCard label="Stock faible" value={lowStockCount} icon={AlertTriangle} tone="warning" />
+        <StatCard label="Rupture" value={outOfStockCount} icon={PackageX} tone="danger" />
+        <StatCard label="Produits" value={products.length} icon={Package} tone="neutral" />
+      </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-dark-600 mb-1">Stock faible</p>
-              <p className="text-2xl font-bold text-yellow-600">{lowStockCount}</p>
-            </div>
-            <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-              <span className="text-yellow-800 text-xl">⚠️</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-dark-600 mb-1">Rupture de stock</p>
-              <p className="text-2xl font-bold text-red-600">{outOfStockCount}</p>
-            </div>
-            <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-              <span className="text-red-700 text-xl">🚫</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-dark-600 mb-1">Total articles</p>
-              <p className="text-2xl font-bold text-green-600">{products.length}</p>
-            </div>
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <span className="text-green-700 text-xl">📦</span>
-            </div>
-          </div>
+      <div className="flex flex-col xl:flex-row xl:items-center gap-3" translate="no">
+        <SearchInput
+          className="flex-1"
+          placeholder="Rechercher par nom ou code..."
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setCurrentPage(1);
+          }}
+        />
+        <div className="flex flex-col sm:flex-row gap-3">
+          <SegmentedControl
+            label="Stock :"
+            options={STOCK_FILTERS}
+            value={filterStock}
+            onChange={(v) => {
+              setFilterStock(v);
+              setCurrentPage(1);
+            }}
+          />
+          <SegmentedControl label="Trier :" options={sortOptions} value={sortBy} onChange={handleSortChange} />
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6" translate="no">
-        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-          <div className="flex-1">
-            <input
-              type="text"
-              placeholder="Rechercher par nom ou code..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white text-dark-900 placeholder-gray-500 text-sm md:text-base"
-              translate="no"
-            />
-          </div>
-
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-sm text-dark-500">Stock:</span>
-            <button
-              onClick={() => setFilterStock('all')}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                filterStock === 'all' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Tous
-            </button>
-            <button
-              onClick={() => setFilterStock('low')}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                filterStock === 'low' 
-                  ? 'bg-yellow-600 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Stock faible
-            </button>
-            <button
-              onClick={() => setFilterStock('out')}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                filterStock === 'out' 
-                  ? 'bg-red-600 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Rupture
-            </button>
-          </div>
-          
-
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-sm text-dark-500">Trier par:</span>
-            <button
-              onClick={() => handleSortChange('name')}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                sortBy === 'name' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              title={`Trier par nom ${sortBy === 'name' && sortOrder === 'asc' ? '(Z-A)' : '(A-Z)'}`}
-            >
-              Nom {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </button>
-            <button
-              onClick={() => handleSortChange('price')}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                sortBy === 'price' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              title={`Trier par prix ${sortBy === 'price' && sortOrder === 'asc' ? '(élevé-bas)' : '(bas-élevé)'}`}
-            >
-              Prix {sortBy === 'price' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </button>
-            <button
-              onClick={() => handleSortChange('quantity')}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                sortBy === 'quantity' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              title={`Trier par quantité ${sortBy === 'quantity' && sortOrder === 'asc' ? '(élevée-basse)' : '(basse-élevée)'}`}
-            >
-              Quantité {sortBy === 'quantity' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </button>
-            <button
-              onClick={() => handleSortChange('value')}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                sortBy === 'value' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              title={`Trier par valeur ${sortBy === 'value' && sortOrder === 'asc' ? '(élevée-basse)' : '(basse-élevée)'}`}
-            >
-              Valeur {sortBy === 'value' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </button>
-          </div>
-          
-          <div className="flex items-center space-x-2 text-dark-500 flex-shrink-0 lg:ml-auto">
-            <span>📊</span>
-            <span className="text-sm">{inventoryList.length} résultat(s)</span>
-            <span className="text-sm text-gray-400">
-              ({(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, inventoryList.length)})
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="text-left py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm">Produit</th>
-                <th className="text-left py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm hidden lg:table-cell">Codes</th>
-                <th className="text-right py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm hidden sm:table-cell">Prix unitaire</th>
-                <th className="text-center py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm">Qté</th>
-                <th className="text-right py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm hidden md:table-cell">Valeur stock</th>
-                <th className="text-center py-3 px-3 md:px-6 font-semibold text-dark-700 text-sm">Modifier</th>
-              </tr>
-            </thead>
-            <tbody>
-              {inventoryList.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="py-12 text-center">
-                    <div className="text-dark-500">
-                      <span className="text-3xl">📦</span>
-                      <p className="mt-2">Aucun produit trouvé</p>
+      <Card bodyClassName="">
+        {inventoryList.length === 0 ? (
+          <EmptyState icon={Package} title="Aucun produit trouvé" />
+        ) : (
+          <>
+            <ul className="md:hidden divide-y divide-dark-100">
+              {pageItems.map((item) => (
+                <li key={item.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-dark-900">{item.name}</p>
+                      <p className="text-sm text-dark-500">
+                        {formatCurrency(item.price)} · valeur {formatCurrency(item.price * item.quantity)}
+                      </p>
                     </div>
-                  </td>
-                </tr>
-              ) : (
-                paginatedInventoryList.map((item) => {
-                  const currentDraft = draftQty[item.id];
-                  const inputValue = currentDraft === undefined ? String(item.quantity) : String(currentDraft);
-                  const isSaving = savingId === item.id;
-                  return (
-                  <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                    <td className="py-3 px-3 md:px-6">
-                      <div className="flex items-center space-x-2 md:space-x-3">
-                        <div className="w-8 h-8 md:w-10 md:h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <span className="text-blue-700 font-semibold text-sm" translate="no">{item.name.charAt(0)}</span>
-                        </div>
-                        <span className="font-medium text-dark-900 text-sm truncate">{item.name}</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-3 md:px-6 text-dark-700 hidden lg:table-cell">
-                      <CodeList codes={item.codes} />
-                    </td>
-                    <td className="py-3 px-3 md:px-6 text-right font-medium text-dark-900 text-sm hidden sm:table-cell">{formatCurrency(item.price)}</td>
-                    <td className="py-3 px-3 md:px-6 text-center">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                        item.quantity === 0
-                          ? 'bg-red-100 text-red-800'
-                          : item.quantity < 10
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}>
-                        {item.quantity}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 md:px-6 text-right font-semibold text-primary-600 text-sm hidden md:table-cell">{formatCurrency(item.price * item.quantity)}</td>
-                    <td className="py-3 px-3 md:px-6">
-                      <div className="flex items-center justify-center gap-2">
-                        <input
-                          type="number"
-                          min="0"
-                          value={inputValue}
-                          onChange={(e) => {
-                            const n = parseInt(e.target.value, 10);
-                            setDraftQty((prev) => ({ ...prev, [item.id]: Number.isFinite(n) ? Math.max(0, n) : 0 }));
-                          }}
-                          className="w-20 px-2 py-1.5 border border-gray-300 rounded-lg bg-white text-dark-900 text-center font-medium focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        />
-                        <button
-                          type="button"
-                          disabled={isSaving}
-                          onClick={async () => {
-                            const nextQty = draftQty[item.id];
-                            const quantity_on_hand = nextQty === undefined ? item.quantity : nextQty;
-                            setSavingId(item.id);
-                            try {
-                              await updateInventoryQuantity({ product_id: item.id, quantity_on_hand });
-                              toast.success('Stock mis à jour');
-                              setDraftQty((prev) => {
-                                const copy = { ...prev };
-                                delete copy[item.id];
-                                return copy;
-                              });
-                            } catch (err) {
-                              toast.error(err.response?.data?.error || 'Erreur lors de la mise à jour du stock');
-                            } finally {
-                              setSavingId(null);
-                            }
-                          }}
-                          className="px-3 py-1.5 bg-[#0369a1] hover:bg-[#0284c7] disabled:bg-gray-400 text-white text-sm font-medium rounded-lg"
-                        >
-                          {isSaving ? '...' : 'Enregistrer'}
-                        </button>
-                      </div>
-                    </td>
+                    <Badge tone={stockTone(item.quantity)}>{item.quantity}</Badge>
+                  </div>
+                  {quantityEditor(item)}
+                </li>
+              ))}
+            </ul>
+
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-dark-200 bg-dark-50 text-left text-xs font-semibold uppercase tracking-wide text-dark-500">
+                    <th className="py-3 px-4">Produit</th>
+                    <th className="py-3 px-4 hidden lg:table-cell">Codes</th>
+                    <th className="py-3 px-4 text-right">Prix unitaire</th>
+                    <th className="py-3 px-4 text-center">Qté</th>
+                    <th className="py-3 px-4 text-right">Valeur</th>
+                    <th className="py-3 px-4 text-right">Modifier</th>
                   </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                </thead>
+                <tbody className="divide-y divide-dark-100">
+                  {pageItems.map((item) => (
+                    <tr key={item.id} className="hover:bg-dark-50">
+                      <td className="py-3 px-4 font-medium text-dark-900">{item.name}</td>
+                      <td className="py-3 px-4 hidden lg:table-cell"><CodeList codes={item.codes} /></td>
+                      <td className="py-3 px-4 text-right whitespace-nowrap">{formatCurrency(item.price)}</td>
+                      <td className="py-3 px-4 text-center"><Badge tone={stockTone(item.quantity)}>{item.quantity}</Badge></td>
+                      <td className="py-3 px-4 text-right font-semibold whitespace-nowrap">{formatCurrency(item.price * item.quantity)}</td>
+                      <td className="py-2 px-4">{quantityEditor(item)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </Card>
 
       <Pagination
-        currentPage={currentPage}
+        currentPage={page}
         totalPages={totalPages}
-        onPageChange={handlePageChange}
+        onPageChange={setCurrentPage}
         totalItems={inventoryList.length}
         itemsPerPage={itemsPerPage}
-        onItemsPerPageChange={handleItemsPerPageChange}
+        onItemsPerPageChange={(n) => {
+          setItemsPerPage(n);
+          setCurrentPage(1);
+        }}
       />
-    </div>
+    </>
   );
 }

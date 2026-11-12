@@ -1,9 +1,17 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { Plus } from 'lucide-react';
 import { useProductStore } from '../../store/productStore';
 import ProductForm from '../../components/admin/ProductForm';
 import ProductList from '../../components/admin/ProductList';
 import Pagination from '../../components/common/Pagination';
 import { normalizeForSearch, productMatchesSearch } from '../../utils/helpers';
+import { Button, Card, PageHeader, SearchInput, SegmentedControl } from '../../components/ui';
+
+const SORT_OPTIONS = [
+  { value: 'name', label: 'Nom' },
+  { value: 'price', label: 'Prix' },
+  { value: 'category', label: 'Catégorie' },
+];
 
 export default function AdminProducts() {
   const [showForm, setShowForm] = useState(false);
@@ -21,182 +29,94 @@ export default function AdminProducts() {
   }, [fetchProducts, fetchInventory]);
 
   const filteredAndSortedProducts = useMemo(() => {
-    const normalizedSearchTerm = normalizeForSearch(searchTerm);
-    const filtered = products.filter((product) => productMatchesSearch(product, normalizedSearchTerm));
-
-    const compareStrings = (aValue, bValue) =>
-      sortOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-
-    const compareNumbers = (aValue, bValue) =>
-      sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
-
-    const toNumber = (value) => {
-      const num = Number(value);
-      return Number.isFinite(num) ? num : 0;
-    };
-
-    return filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'price':
-          return compareNumbers(
-            toNumber(a.price_selling),
-            toNumber(b.price_selling)
-          );
-        case 'category':
-          return compareStrings((a.category || '').toLowerCase(), (b.category || '').toLowerCase());
-        case 'name':
-        default:
-          return compareStrings(a.name.toLowerCase(), b.name.toLowerCase());
-      }
-    });
+    const term = normalizeForSearch(searchTerm);
+    const direction = sortOrder === 'asc' ? 1 : -1;
+    return products
+      .filter((product) => productMatchesSearch(product, term))
+      .sort((a, b) => {
+        if (sortBy === 'price') return direction * (Number(a.price_selling) - Number(b.price_selling));
+        const key = sortBy === 'category' ? 'category' : 'name';
+        return direction * (a[key] || '').toLowerCase().localeCompare((b[key] || '').toLowerCase());
+      });
   }, [products, searchTerm, sortBy, sortOrder]);
 
-  const paginatedProducts = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return filteredAndSortedProducts.slice(startIndex, endIndex);
-  }, [filteredAndSortedProducts, currentPage, itemsPerPage]);
+  const totalPages = Math.max(1, Math.ceil(filteredAndSortedProducts.length / itemsPerPage));
+  const page = Math.min(currentPage, totalPages);
+  const paginatedProducts = filteredAndSortedProducts.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
-  const totalPages = useMemo(() => {
-    return Math.ceil(filteredAndSortedProducts.length / itemsPerPage);
-  }, [filteredAndSortedProducts.length, itemsPerPage]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, sortBy, sortOrder, itemsPerPage]);
-
-  const handleCloseForm = () => {
-    setShowForm(false);
-    setEditingProduct(null);
-  };
-
-  const handleEditProduct = (product) => {
-    setEditingProduct(product);
-    setShowForm(true);
-  };
-
-  const handleSortChange = (newSortBy) => {
-    if (sortBy === newSortBy) {
+  const handleSortChange = (value) => {
+    if (sortBy === value) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
-      setSortBy(newSortBy);
+      setSortBy(value);
       setSortOrder('asc');
     }
-  };
-
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
-  };
-
-  const handleItemsPerPageChange = (newItemsPerPage) => {
-    setItemsPerPage(newItemsPerPage);
     setCurrentPage(1);
   };
 
+  const sortOptions = SORT_OPTIONS.map((opt) => ({
+    ...opt,
+    label: sortBy === opt.value ? `${opt.label} ${sortOrder === 'asc' ? '↑' : '↓'}` : opt.label,
+  }));
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-dark-900">Gestion des Produits</h1>
-          <p className="text-dark-600 mt-1 text-sm md:text-base">{products.length} produit(s)</p>
-        </div>
-        <button
+    <>
+      <PageHeader title="Produits" subtitle={`${products.length} produit(s)`}>
+        <Button
+          icon={Plus}
           onClick={() => {
             setEditingProduct(null);
             setShowForm(true);
           }}
-          className="px-4 md:px-6 py-2 md:py-3 bg-[#0369a1] hover:bg-[#0284c7] text-white rounded-lg transition-all flex items-center space-x-2 font-medium shadow-sm text-sm md:text-base"
         >
-          <span>➕</span>
-          <span>Ajouter un produit</span>
-        </button>
-      </div>
+          Ajouter un produit
+        </Button>
+      </PageHeader>
 
       {showForm && (
-        <ProductForm product={editingProduct} onClose={handleCloseForm} />
+        <ProductForm
+          product={editingProduct}
+          onClose={() => {
+            setShowForm(false);
+            setEditingProduct(null);
+          }}
+        />
       )}
 
-      <div
-        className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6"
-        translate="no"
-      >
-        <div className="flex flex-col md:flex-row md:items-center gap-4">
-          <div className="flex-1">
-            <input
-              type="text"
-              placeholder="Rechercher par nom ou code..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white text-dark-900 placeholder-gray-500 text-sm md:text-base"
-              translate="no"
-            />
-          </div>
-          
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-sm text-dark-500 hidden md:block">Trier par:</span>
-            <button
-              onClick={() => handleSortChange('name')}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                sortBy === 'name' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              title={`Trier par nom ${sortBy === 'name' && sortOrder === 'asc' ? '(Z-A)' : '(A-Z)'}`}
-              translate="no"
-            >
-              Nom {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </button>
-            <button
-              onClick={() => handleSortChange('price')}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                sortBy === 'price' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              title={`Trier par prix ${sortBy === 'price' && sortOrder === 'asc' ? '(élevé-bas)' : '(bas-élevé)'}`}
-              translate="no"
-            >
-              Prix {sortBy === 'price' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </button>
-            <button
-              onClick={() => handleSortChange('category')}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                sortBy === 'category' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              title={`Trier par catégorie ${sortBy === 'category' && sortOrder === 'asc' ? '(Z-A)' : '(A-Z)'}`}
-              translate="no"
-            >
-              Catégorie {sortBy === 'category' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </button>
-          </div>
-          
-          <div className="flex items-center space-x-2 text-dark-500 flex-shrink-0">
-            <span>🔍</span>
-            <span className="text-sm">{filteredAndSortedProducts.length} résultat(s)</span>
-            <span className="text-sm text-gray-400">
-              ({(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filteredAndSortedProducts.length)})
-            </span>
-          </div>
-        </div>
+      <div className="flex flex-col lg:flex-row lg:items-center gap-3" translate="no">
+        <SearchInput
+          className="flex-1"
+          placeholder="Rechercher par nom ou code..."
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setCurrentPage(1);
+          }}
+        />
+        <SegmentedControl label="Trier :" options={sortOptions} value={sortBy} onChange={handleSortChange} />
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <Card bodyClassName="">
         <ProductList
           products={paginatedProducts}
-          onEdit={handleEditProduct}
+          onEdit={(product) => {
+            setEditingProduct(product);
+            setShowForm(true);
+          }}
         />
-      </div>
+      </Card>
 
       <Pagination
-        currentPage={currentPage}
+        currentPage={page}
         totalPages={totalPages}
-        onPageChange={handlePageChange}
+        onPageChange={setCurrentPage}
         totalItems={filteredAndSortedProducts.length}
         itemsPerPage={itemsPerPage}
-        onItemsPerPageChange={handleItemsPerPageChange}
+        onItemsPerPageChange={(n) => {
+          setItemsPerPage(n);
+          setCurrentPage(1);
+        }}
       />
-    </div>
+    </>
   );
 }

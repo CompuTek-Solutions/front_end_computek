@@ -6,7 +6,6 @@ import Login from './pages/auth/Login';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminProducts from './pages/admin/AdminProducts';
 import AdminInventory from './pages/admin/AdminInventory';
-import AdminSales from './pages/admin/AdminSales';
 import AdminStatistics from './pages/admin/AdminStatistics';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminClients from './pages/admin/AdminClients';
@@ -71,16 +70,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/admin/sales"
-            element={
-              <ProtectedRoute requiredRole="admin">
-                <Layout pageTitle="Historique des ventes">
-                  <AdminSales />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/admin/sales" element={<Navigate to="/admin/invoices" replace />} />
           <Route
             path="/admin/statistics"
             element={
@@ -146,7 +136,7 @@ export default function App() {
             path="/seller/new-sale"
             element={
               <ProtectedRoute requiredRole="seller">
-                <Layout pageTitle="Nouvelle vente">
+                <Layout pageTitle="Nouvelle vente" fullBleed>
                   <SellerNewSale />
                 </Layout>
               </ProtectedRoute>
@@ -198,7 +188,7 @@ export default function App() {
       </BrowserRouter>
 
       <Toaster
-        position="top-right"
+        position="top-center"
         reverseOrder={false}
         gutter={8}
         toastOptions={{

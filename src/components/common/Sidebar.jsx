@@ -1,82 +1,69 @@
 import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
+import {
+  LayoutDashboard, Package, ClipboardList, Receipt, Users, UserCog, BarChart3,
+  Settings, ShoppingCart, History, TrendingUp, X,
+} from 'lucide-react';
+
+const ADMIN_MENU = [
+  { name: 'Tableau de bord', path: '/admin', icon: LayoutDashboard, end: true },
+  { name: 'Produits', path: '/admin/products', icon: Package },
+  { name: 'Inventaire', path: '/admin/inventory', icon: ClipboardList },
+  { name: 'Factures', path: '/admin/invoices', icon: Receipt },
+  { name: 'Clients', path: '/admin/clients', icon: Users },
+  { name: 'Statistiques', path: '/admin/statistics', icon: BarChart3 },
+  { name: 'Utilisateurs', path: '/admin/users', icon: UserCog },
+  { name: 'Mon compte', path: '/admin/settings', icon: Settings },
+];
+
+const SELLER_MENU = [
+  { name: 'Tableau de bord', path: '/seller', icon: LayoutDashboard, end: true },
+  { name: 'Nouvelle vente', path: '/seller/new-sale', icon: ShoppingCart },
+  { name: 'Historique', path: '/seller/sales-history', icon: History },
+  { name: 'Mes factures', path: '/seller/invoices', icon: Receipt },
+  { name: 'Mes performances', path: '/seller/performance', icon: TrendingUp },
+  { name: 'Mon compte', path: '/seller/settings', icon: Settings },
+];
 
 export default function Sidebar({ role, isOpen, onClose }) {
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  const adminMenus = [
-    { name: 'Tableau de bord', path: '/admin', icon: '📊' },
-    { name: 'Produits', path: '/admin/products', icon: '📦' },
-    { name: 'Inventaire', path: '/admin/inventory', icon: '📋' },
-    { name: 'Factures', path: '/admin/invoices', icon: '🧾' },
-    { name: 'Clients', path: '/admin/clients', icon: '👤' },
-    { name: 'Statistiques', path: '/admin/statistics', icon: '📈' },
-    { name: 'Utilisateurs', path: '/admin/users', icon: '👥' },
-    { name: 'Mon compte', path: '/admin/settings', icon: '⚙️' },
-  ];
-
-  const sellerMenus = [
-    { name: 'Tableau de bord', path: '/seller', icon: '📊' },
-    { name: 'Nouvelle vente', path: '/seller/new-sale', icon: '💳' },
-    { name: 'Historique', path: '/seller/sales-history', icon: '📜' },
-    { name: 'Mes factures', path: '/seller/invoices', icon: '🧾' },
-    { name: 'Mes performances', path: '/seller/performance', icon: '📈' },
-    { name: 'Mon compte', path: '/seller/settings', icon: '⚙️' },
-  ];
-
-  const menus = role === 'admin' ? adminMenus : sellerMenus;
-
-  const handleNavigate = (path) => {
-    navigate(path);
-    if (onClose) onClose();
-  };
+  const menus = role === 'admin' ? ADMIN_MENU : SELLER_MENU;
 
   return (
     <aside
-      className={`
-        flex-shrink-0 flex flex-col h-screen bg-white shadow-sm border-r border-gray-200
-        fixed top-0 left-0 z-30 transition-transform duration-300
-        md:relative md:translate-x-0 md:w-64 md:z-auto
-        w-64
-        ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-      `}
+      className={`fixed inset-y-0 left-0 z-40 w-64 flex flex-col bg-white border-r border-dark-200 transition-transform duration-200
+        md:static md:z-auto md:translate-x-0 ${isOpen ? 'translate-x-0 shadow-xl' : '-translate-x-full'}`}
     >
-      <div className="flex-shrink-0 p-4 border-b border-gray-100 bg-gradient-to-r from-primary-50 to-transparent">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center min-w-0">
-            <span className="text-lg font-semibold text-dark-900">Navigation</span>
-          </div>
-          <button
-            onClick={onClose}
-            className="md:hidden ml-2 p-1.5 rounded-lg text-dark-500 hover:bg-gray-100 flex-shrink-0"
-            aria-label="Fermer le menu"
-          >
-            ✕
-          </button>
-        </div>
+      <div className="flex items-center justify-between h-16 px-4 border-b border-dark-200 md:hidden">
+        <span className="font-semibold text-dark-900">Menu</span>
+        <button
+          onClick={onClose}
+          className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-dark-500 hover:bg-dark-100"
+          aria-label="Fermer le menu"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
 
-      <nav className="flex-1 min-h-0 overflow-y-auto py-3 px-2 space-y-1">
-        {menus.map((menu) => {
-          const isActive = location.pathname === menu.path;
-          return (
-            <button
-              key={menu.path}
-              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all text-left ${
+      <nav className="flex-1 overflow-y-auto p-3 space-y-1">
+        {menus.map(({ name, path, icon: Icon, end }) => (
+          <NavLink
+            key={path}
+            to={path}
+            end={end}
+            onClick={onClose}
+            className={({ isActive }) =>
+              `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-primary-100 text-primary-800 border-l-2 border-primary-600'
-                  : 'text-dark-700 hover:bg-gray-100 hover:text-dark-900'
-              }`}
-              onClick={() => handleNavigate(menu.path)}
-            >
-              <span className="text-lg flex-shrink-0">{menu.icon}</span>
-              <span className="font-medium truncate">{menu.name}</span>
-            </button>
-          );
-        })}
+                  ? 'bg-primary-50 text-primary-700'
+                  : 'text-dark-600 hover:bg-dark-100 hover:text-dark-900'
+              }`
+            }
+          >
+            <Icon className="h-5 w-5 shrink-0" />
+            <span className="truncate">{name}</span>
+          </NavLink>
+        ))}
       </nav>
-
     </aside>
   );
 }
