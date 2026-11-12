@@ -1,6 +1,29 @@
 import { create } from 'zustand';
 import { productAPI, inventoryAPI, salesAPI, userAPI, clientAPI } from '../services/api.js';
 
+const formatSummary = (summary) =>
+  summary
+    ? {
+        totalRevenue: Number(summary.total_revenue) || 0,
+        totalOrders: Number(summary.total_orders) || 0,
+        totalQuantity: Number(summary.total_items) || 0,
+        averageOrder: Number(summary.avg_order) || 0,
+      }
+    : null;
+
+const formatStats = (payload = {}) => ({
+  summary: formatSummary(payload.summary || {}),
+  previousSummary: formatSummary(payload.previous_summary),
+  topProducts: (payload.top_products || []).map((product) => ({
+    productId: product.id,
+    name: product.name,
+    quantity: Number(product.quantity_sold) || 0,
+    revenue: Number(product.total_revenue) || 0,
+  })),
+  categories: payload.categories || [],
+  monthlySales: payload.monthly_sales || [],
+});
+
 export const useProductStore = create((set, get) => ({
   products: [],
   inventory: [],
@@ -10,6 +33,7 @@ export const useProductStore = create((set, get) => ({
   adminStats: null,
   sellerStats: null,
   isLoading: false,
+  statsLoading: false,
   error: null,
 
   fetchProducts: async (params = {}) => {
@@ -25,37 +49,15 @@ export const useProductStore = create((set, get) => ({
     }
   },
 
-  fetchSellerStats: async (sellerId) => {
-    set({ isLoading: true, error: null });
+  fetchSellerStats: async (sellerId, params = {}) => {
+    set({ statsLoading: true, error: null });
     try {
-      const response = await salesAPI.getSellerStats(sellerId);
-      const payload = response.data || {};
-      const summary = payload.summary || {};
-      const formattedTopProducts = (payload.top_products || []).map((product) => ({
-        productId: product.id,
-        name: product.name,
-        quantity: product.quantity_sold ?? 0,
-        revenue: product.total_revenue ?? 0,
-      }));
-
-      set({
-        sellerStats: {
-          summary: {
-            totalRevenue: summary.total_revenue ?? 0,
-            totalOrders: summary.total_orders ?? 0,
-            totalQuantity: summary.total_items ?? 0,
-            averageOrder: summary.avg_order ?? 0,
-          },
-          topProducts: formattedTopProducts,
-          categories: payload.categories || [],
-          monthlySales: payload.monthly_sales || [],
-        },
-        isLoading: false,
-      });
-      return payload;
+      const response = await salesAPI.getSellerStats(sellerId, params);
+      set({ sellerStats: formatStats(response.data), statsLoading: false });
+      return response.data;
     } catch (error) {
       const errorMsg = error.response?.data?.error || 'Erreur lors du chargement des statistiques vendeur';
-      set({ error: errorMsg, isLoading: false });
+      set({ error: errorMsg, statsLoading: false });
       throw error;
     }
   },
@@ -180,37 +182,15 @@ export const useProductStore = create((set, get) => ({
     }
   },
 
-  fetchAdminStats: async () => {
-    set({ isLoading: true, error: null });
+  fetchAdminStats: async (params = {}) => {
+    set({ statsLoading: true, error: null });
     try {
-      const response = await salesAPI.getStatistics();
-      const payload = response.data || {};
-      const summary = payload.summary || {};
-      const formattedTopProducts = (payload.top_products || []).map((product) => ({
-        productId: product.id,
-        name: product.name,
-        quantity: product.quantity_sold ?? 0,
-        revenue: product.total_revenue ?? 0,
-      }));
-
-      set({
-        adminStats: {
-          summary: {
-            totalRevenue: summary.total_revenue ?? 0,
-            totalQuantity: summary.total_items ?? 0,
-            totalOrders: summary.total_orders ?? 0,
-            averageOrder: summary.avg_order ?? 0,
-          },
-          topProducts: formattedTopProducts,
-          categories: payload.categories || [],
-          monthlySales: payload.monthly_sales || [],
-        },
-        isLoading: false,
-      });
-      return payload;
+      const response = await salesAPI.getStatistics(params);
+      set({ adminStats: formatStats(response.data), statsLoading: false });
+      return response.data;
     } catch (error) {
       const errorMsg = error.response?.data?.error || 'Erreur lors du chargement des statistiques';
-      set({ error: errorMsg, isLoading: false });
+      set({ error: errorMsg, statsLoading: false });
       throw error;
     }
   },

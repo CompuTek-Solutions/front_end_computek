@@ -20,11 +20,11 @@ export default function Modal({ open = true, onClose, title, size = 'lg', footer
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
-      <div className="absolute inset-0 bg-dark-900/50" onClick={onClose} />
+      <div className="absolute inset-0 bg-dark-900/50 animate-fade-in" onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"
-        className={`relative w-full ${SIZES[size]} bg-white shadow-xl rounded-t-2xl sm:rounded-xl max-h-[92vh] flex flex-col`}
+        className={`relative w-full ${SIZES[size]} bg-white shadow-xl rounded-t-2xl sm:rounded-xl max-h-[92vh] flex flex-col animate-sheet-up sm:animate-pop-in`}
       >
         <header className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-dark-200">
           <h2 className="text-lg font-semibold text-dark-900 truncate">{title}</h2>

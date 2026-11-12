@@ -1,10 +1,12 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { useProductStore } from '../../store/productStore';
 import { useAuthStore } from '../../store/authStore';
 import { CreditCard, PackageCheck, ShoppingBag, Wallet } from 'lucide-react';
 import { formatCurrency } from '../../utils/helpers';
 import TopProductsList from '../../components/common/TopProductsList';
 import { Card, PageHeader, StatCard } from '../../components/ui';
+import PeriodFilter from '../../components/common/PeriodFilter';
+import { periodParams } from '../../utils/periods';
 
 const MONTHLY_TARGET = 500000;
 
@@ -14,12 +16,16 @@ const toNumber = (value) => {
 };
 
 export default function SellerPerformance() {
-  const { sellerStats, fetchSellerStats } = useProductStore();
+  const { sellerStats, statsLoading, fetchSellerStats } = useProductStore();
   const { user } = useAuthStore();
+  const [period, setPeriod] = useState('30d');
 
   useEffect(() => {
-    if (user?.id) fetchSellerStats(user.id).catch(() => {});
-  }, [fetchSellerStats, user?.id]);
+    if (user?.id) fetchSellerStats(user.id, periodParams(period)).catch(() => {});
+  }, [fetchSellerStats, user?.id, period]);
+
+  const loading = statsLoading && !sellerStats;
+  const prev = sellerStats?.previousSummary;
 
   const summary = sellerStats?.summary;
   const stats = {
@@ -44,7 +50,9 @@ export default function SellerPerformance() {
 
   return (
     <>
-      <PageHeader title="Mes performances" />
+      <PageHeader title="Mes performances">
+        <PeriodFilter value={period} onChange={setPeriod} />
+      </PageHeader>
 
       <Card title="Objectif du mois">
         <div className="flex items-end justify-between gap-3 mb-3">
@@ -60,10 +68,10 @@ export default function SellerPerformance() {
       </Card>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <StatCard label="Chiffre d'affaires" value={formatCurrency(stats.totalRevenue)} icon={Wallet} tone="success" />
-        <StatCard label="Ventes" value={stats.totalOrders} icon={ShoppingBag} />
-        <StatCard label="Articles vendus" value={stats.totalQuantity} icon={PackageCheck} />
-        <StatCard label="Panier moyen" value={formatCurrency(stats.averageOrder)} icon={CreditCard} tone="neutral" />
+        <StatCard label="Chiffre d'affaires" value={formatCurrency(stats.totalRevenue)} icon={Wallet} tone="success" loading={loading} current={stats.totalRevenue} previous={prev?.totalRevenue} />
+        <StatCard label="Ventes" value={stats.totalOrders} icon={ShoppingBag} loading={loading} current={stats.totalOrders} previous={prev?.totalOrders} />
+        <StatCard label="Articles vendus" value={stats.totalQuantity} icon={PackageCheck} loading={loading} current={stats.totalQuantity} previous={prev?.totalQuantity} />
+        <StatCard label="Panier moyen" value={formatCurrency(stats.averageOrder)} icon={CreditCard} tone="neutral" loading={loading} current={stats.averageOrder} previous={prev?.averageOrder} />
       </div>
 
       <Card title="Produits les plus vendus" bodyClassName="p-2 sm:p-4">

@@ -46,7 +46,7 @@ export default function Pagination({
           <select
             value={itemsPerPage}
             onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-            className="h-8 rounded-lg border border-dark-200 bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="h-8 rounded-lg border border-dark-200 bg-white px-2 text-sm text-dark-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
             aria-label="Éléments par page"
           >
             {itemsPerPageOptions.map((n) => (

@@ -5,7 +5,8 @@ import { useProductStore } from '../../store/productStore';
 import { useAuthStore } from '../../store/authStore';
 import { normalizeForSearch } from '../../utils/helpers';
 import {
-  Badge, Button, Card, EmptyState, Modal, PageHeader, SearchInput, StatCard, inputClass, labelClass,
+  Badge, Button, Card, EmptyState, ListSkeleton, Modal, PageHeader, SearchInput, Select, StatCard, confirmDialog,
+  inputClass, labelClass,
 } from '../../components/ui';
 
 const EMPTY_FORM = { name: '', email: '', password: '', role: 'seller' };
@@ -66,10 +67,14 @@ export default function AdminUsers() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Supprimer cet utilisateur ?')) return;
+  const handleDelete = async (user) => {
+    const ok = await confirmDialog({
+      title: "Supprimer l'utilisateur",
+      message: `Le compte de ${user.name} sera supprimé définitivement.`,
+    });
+    if (!ok) return;
     try {
-      await deleteUser(id);
+      await deleteUser(user.id);
       toast.success('Utilisateur supprimé');
     } catch (err) {
       toast.error(err.response?.data?.error || 'Erreur');
@@ -94,7 +99,7 @@ export default function AdminUsers() {
           />
         )}
         {!isSelf && user.role !== 'admin' && (
-          <Button variant="danger-ghost" size="icon" icon={Trash2} onClick={() => handleDelete(user.id)} title="Supprimer" aria-label="Supprimer" />
+          <Button variant="danger-ghost" size="icon" icon={Trash2} onClick={() => handleDelete(user)} title="Supprimer" aria-label="Supprimer" />
         )}
       </div>
     );
@@ -126,7 +131,9 @@ export default function AdminUsers() {
       <SearchInput placeholder="Rechercher par nom ou email..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
 
       <Card bodyClassName="" className="overflow-hidden">
-        {filtered.length === 0 ? (
+        {isLoading && users.length === 0 ? (
+          <ListSkeleton />
+        ) : filtered.length === 0 ? (
           <EmptyState icon={Users} title={users.length === 0 ? 'Aucun utilisateur' : 'Aucun résultat'} />
         ) : (
           <>
@@ -215,10 +222,10 @@ export default function AdminUsers() {
             </div>
             <div>
               <label className={labelClass}>Rôle</label>
-              <select name="role" value={formData.role} onChange={handleChange} className={inputClass}>
+              <Select name="role" value={formData.role} onChange={handleChange}>
                 <option value="seller">Vendeur</option>
                 <option value="admin">Administrateur</option>
-              </select>
+              </Select>
             </div>
           </form>
         </Modal>

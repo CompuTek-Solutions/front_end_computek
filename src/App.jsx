@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
+import { ConfirmHost } from './components/ui';
 
 import Login from './pages/auth/Login';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -187,6 +188,7 @@ export default function App() {
         </Routes>
       </BrowserRouter>
 
+      <ConfirmHost />
       <Toaster
         position="top-center"
         reverseOrder={false}

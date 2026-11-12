@@ -4,15 +4,19 @@ import toast from 'react-hot-toast';
 import { useProductStore } from '../../store/productStore';
 import { formatCurrency, getProductCodes, stockTone } from '../../utils/helpers';
 import CodeList from './CodeList';
-import { Badge, Button, EmptyState } from '../ui';
+import { Badge, Button, EmptyState, ListSkeleton, confirmDialog } from '../ui';
 
 export default function ProductList({ products, onEdit }) {
-  const { deleteProduct, inventory } = useProductStore();
+  const { deleteProduct, inventory, isLoading } = useProductStore();
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Supprimer ce produit ?')) return;
+  const handleDelete = async (product) => {
+    const ok = await confirmDialog({
+      title: 'Supprimer le produit',
+      message: `« ${product.name} » sera supprimé définitivement.`,
+    });
+    if (!ok) return;
     try {
-      await deleteProduct(id);
+      await deleteProduct(product.id);
       toast.success('Produit supprimé');
     } catch (error) {
       toast.error(error.response?.data?.error || 'Erreur lors de la suppression');
@@ -22,13 +26,14 @@ export default function ProductList({ products, onEdit }) {
   const stockOf = (productId) => inventory.find((i) => i.product_id === productId)?.quantity_on_hand ?? 0;
 
   if (products.length === 0) {
+    if (isLoading) return <ListSkeleton />;
     return <EmptyState icon={Package} title="Aucun produit trouvé" />;
   }
 
   const actions = (product) => (
     <div className="flex items-center justify-end gap-1">
       <Button variant="ghost" size="icon" icon={Pencil} onClick={() => onEdit(product)} title="Modifier" aria-label="Modifier" />
-      <Button variant="danger-ghost" size="icon" icon={Trash2} onClick={() => handleDelete(product.id)} title="Supprimer" aria-label="Supprimer" />
+      <Button variant="danger-ghost" size="icon" icon={Trash2} onClick={() => handleDelete(product)} title="Supprimer" aria-label="Supprimer" />
     </div>
   );
 

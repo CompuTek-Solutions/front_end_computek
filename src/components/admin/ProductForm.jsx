@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Camera, Plus, Sparkles, X } from 'lucide-react';
 import { useProductStore } from '../../store/productStore';
-import { Button, Modal, inputClass as baseInput, labelClass } from '../ui';
+import { Button, Modal, Select, inputClass as baseInput, labelClass } from '../ui';
 import { validateProduct } from '../../utils/validation';
 import { formatCurrency, getProductCodes } from '../../utils/helpers';
 import { toast } from 'react-hot-toast';
@@ -189,21 +189,20 @@ export default function ProductForm({ product, onClose }) {
 
           <div>
             <label className={labelClass}>Catégorie</label>
-            <select
+            <Select
               value={isCustomCategory ? '__autre__' : formData.category}
               onChange={(e) => {
                 const isOther = e.target.value === '__autre__';
                 setIsCustomCategory(isOther);
                 setFormData((prev) => ({ ...prev, category: isOther ? '' : e.target.value }));
               }}
-              className={inputClass(false)}
             >
               <option value="">-- Sélectionner --</option>
               {PRODUCT_CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
               <option value="__autre__">Autre...</option>
-            </select>
+            </Select>
             {isCustomCategory && (
               <input
                 type="text"

@@ -4,7 +4,7 @@ import { useProductStore } from '../../store/productStore';
 import { formatCurrency, formatDateTime, PAYMENT_LABELS } from '../../utils/helpers';
 import { printSaleInvoice } from '../../utils/printSaleInvoice';
 import Pagination from '../../components/common/Pagination';
-import { Badge, Button, Card, EmptyState, PageHeader, StatCard } from '../../components/ui';
+import { Badge, Button, Card, EmptyState, ListSkeleton, PageHeader, StatCard } from '../../components/ui';
 
 export default function SellerSalesHistory() {
   const { sales, fetchSales, salesPagination, isLoading } = useProductStore();
@@ -41,7 +41,7 @@ export default function SellerSalesHistory() {
 
       <Card bodyClassName="" className="overflow-hidden">
         {isLoading && sales.length === 0 ? (
-          <p className="py-10 text-center text-dark-500">Chargement...</p>
+          <ListSkeleton />
         ) : totalCount === 0 ? (
           <EmptyState icon={History} title="Aucune vente enregistrée" />
         ) : (

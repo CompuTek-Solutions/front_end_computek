@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { BarChart3, CreditCard, PackageCheck, PieChart as PieIcon, ShoppingBag, Wallet } from 'lucide-react';
 import {
   BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -6,17 +6,23 @@ import {
 import { useProductStore } from '../../store/productStore';
 import { formatCurrency } from '../../utils/helpers';
 import { Card, EmptyState, PageHeader, StatCard } from '../../components/ui';
+import PeriodFilter from '../../components/common/PeriodFilter';
+import { periodParams } from '../../utils/periods';
 
 const CHART_COLORS = ['#0369a1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#64748b', '#7dd3fc', '#075985'];
 const AXIS = { stroke: '#94a3b8', fontSize: 12 };
 const compact = (v) => new Intl.NumberFormat('fr-FR', { notation: 'compact', maximumFractionDigits: 1 }).format(v);
 
 export default function AdminStatistics() {
-  const { adminStats, fetchAdminStats } = useProductStore();
+  const { adminStats, statsLoading, fetchAdminStats } = useProductStore();
+  const [period, setPeriod] = useState('30d');
 
   useEffect(() => {
-    fetchAdminStats().catch(() => {});
-  }, [fetchAdminStats]);
+    fetchAdminStats(periodParams(period)).catch(() => {});
+  }, [fetchAdminStats, period]);
+
+  const loading = statsLoading && !adminStats;
+  const prev = adminStats?.previousSummary;
 
   const stats = adminStats?.summary ?? { totalRevenue: 0, totalQuantity: 0, totalOrders: 0, averageOrder: 0 };
   const topProducts = useMemo(
@@ -46,17 +52,19 @@ export default function AdminStatistics() {
 
   return (
     <>
-      <PageHeader title="Statistiques" />
+      <PageHeader title="Statistiques">
+        <PeriodFilter value={period} onChange={setPeriod} />
+      </PageHeader>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <StatCard label="Chiffre d'affaires" value={formatCurrency(stats.totalRevenue)} icon={Wallet} tone="success" />
-        <StatCard label="Ventes" value={stats.totalOrders} icon={ShoppingBag} />
-        <StatCard label="Articles vendus" value={stats.totalQuantity} icon={PackageCheck} />
-        <StatCard label="Panier moyen" value={formatCurrency(stats.averageOrder)} icon={CreditCard} tone="neutral" />
+        <StatCard label="Chiffre d'affaires" value={formatCurrency(stats.totalRevenue)} icon={Wallet} tone="success" loading={loading} current={stats.totalRevenue} previous={prev?.totalRevenue} />
+        <StatCard label="Ventes" value={stats.totalOrders} icon={ShoppingBag} loading={loading} current={stats.totalOrders} previous={prev?.totalOrders} />
+        <StatCard label="Articles vendus" value={stats.totalQuantity} icon={PackageCheck} loading={loading} current={stats.totalQuantity} previous={prev?.totalQuantity} />
+        <StatCard label="Panier moyen" value={formatCurrency(stats.averageOrder)} icon={CreditCard} tone="neutral" loading={loading} current={stats.averageOrder} previous={prev?.averageOrder} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card title="Chiffre d'affaires mensuel">
+        <Card title="Chiffre d'affaires mensuel (12 derniers mois)">
           {monthlyData.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={monthlyData} margin={{ left: -10, right: 8 }}>
