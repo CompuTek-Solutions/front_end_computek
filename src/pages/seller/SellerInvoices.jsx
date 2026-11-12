@@ -102,10 +102,8 @@ export default function SellerInvoices() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-dark-900">Mes Factures</h1>
-        <p className="text-dark-600 mt-1">Toutes vos factures générées</p>
       </div>
 
-      {/* Cartes de synthèse */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
@@ -161,7 +159,6 @@ export default function SellerInvoices() {
         </div>
       </div>
 
-      {/* Barre de recherche */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="flex flex-col">
@@ -216,14 +213,21 @@ export default function SellerInvoices() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-dark-900"
             />
           </div>
-          <div className="bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg px-5 py-3 whitespace-nowrap flex flex-col justify-center">
-            <p className="text-xs text-dark-600">Total filtré</p>
-            <p className="text-lg font-bold text-primary-600">{formatCurrency(totalAmount)}</p>
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="w-full px-4 py-2 border border-primary-200 text-primary-700 rounded-lg font-medium hover:bg-primary-50 transition"
+            >
+              Réinitialiser
+            </button>
           </div>
         </div>
+        <p className="mt-4 text-sm text-dark-600">
+          Total filtré : <span className="font-bold text-primary-600">{formatCurrency(totalAmount)}</span>
+        </p>
       </div>
 
-      {/* Tableau */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           {totalCount === 0 ? (

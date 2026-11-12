@@ -12,7 +12,6 @@ export const useProductStore = create((set, get) => ({
   isLoading: false,
   error: null,
 
-  // Produits
   fetchProducts: async (params = {}) => {
     set({ isLoading: true, error: null });
     try {
@@ -50,8 +49,6 @@ export const useProductStore = create((set, get) => ({
           topProducts: formattedTopProducts,
           categories: payload.categories || [],
           monthlySales: payload.monthly_sales || [],
-          commissionRate: payload.commission_rate ?? 0,
-          commission: payload.commission ?? 0,
         },
         isLoading: false,
       });
@@ -79,43 +76,15 @@ export const useProductStore = create((set, get) => ({
   },
 
   getProductByBarcode: async (barcode) => {
-    try {
-      const response = await productAPI.getByBarcode(barcode);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    const response = await productAPI.getByBarcode(barcode);
+    return response.data;
   },
 
-  checkProductExists: async (name, barcode = null) => {
-    try {
-      // Vérifier par nom
-      const response = await productAPI.getAll({ search: name.trim() });
-      const existingByName = response.data.find(p => 
-        p.name.toLowerCase().trim() === name.toLowerCase().trim()
-      );
-      
-      if (existingByName) {
-        return { exists: true, product: existingByName, field: 'name' };
-      }
-      
-      // Vérifier par code-barres si fourni
-      if (barcode && barcode.trim()) {
-        try {
-          const existingByBarcode = await productAPI.getByBarcode(barcode.trim());
-          return { exists: true, product: existingByBarcode.data, field: 'barcode' };
-        } catch (error) {
-          // Si le code-barres n'est pas trouvé, c'est normal
-          if (error.response?.status !== 404) {
-            throw error;
-          }
-        }
-      }
-      
-      return { exists: false, product: null, field: null };
-    } catch (error) {
-      throw error;
-    }
+  checkProductExists: async (name) => {
+    const target = name.trim().toLowerCase();
+    const response = await productAPI.getAll({ search: name.trim() });
+    const existing = response.data.find((p) => p.name.trim().toLowerCase() === target);
+    return { exists: Boolean(existing), product: existing || null };
   },
 
   addProduct: async (product) => {
@@ -124,7 +93,6 @@ export const useProductStore = create((set, get) => ({
       const response = await productAPI.create(product);
       const products = [...get().products, response.data];
       set({ products, isLoading: false });
-      // Recharger l'inventaire pour afficher le stock du nouveau produit
       get().fetchInventory().catch(() => {});
       return response.data;
     } catch (error) {
@@ -161,7 +129,6 @@ export const useProductStore = create((set, get) => ({
     }
   },
 
-  // Inventaire
   fetchInventory: async () => {
     set({ isLoading: true, error: null });
     try {
@@ -197,7 +164,6 @@ export const useProductStore = create((set, get) => ({
     }
   },
 
-  // Ventes
   fetchSales: async (params = {}) => {
     set({ isLoading: true, error: null });
     try {
@@ -256,8 +222,6 @@ export const useProductStore = create((set, get) => ({
         items: (saleData.items || []).map((item) => ({
           product_id: item.productId,
           quantity: item.quantity,
-          unit_price: item.price,
-          subtotal: item.total,
         })),
         discount_amount: saleData.discount ?? 0,
         payment_method: saleData.paymentMethod,
@@ -265,8 +229,7 @@ export const useProductStore = create((set, get) => ({
         client_id: saleData.client_id || null,
       };
       const response = await salesAPI.create(payload);
-      const sales = [...get().sales, response.data];
-      set({ sales, isLoading: false });
+      set({ isLoading: false });
       return response.data;
     } catch (error) {
       const errorMsg = error.response?.data?.error || 'Erreur lors de la création de la vente';
@@ -275,7 +238,6 @@ export const useProductStore = create((set, get) => ({
     }
   },
 
-  // Clients
   clients: [],
   clientsPagination: null,
   fetchClients: async (params = {}) => {
@@ -285,12 +247,7 @@ export const useProductStore = create((set, get) => ({
       const payload = response.data;
       const clientsData = Array.isArray(payload) ? payload : payload?.data ?? [];
       const pagination = Array.isArray(payload) ? null : payload?.pagination ?? null;
-      set((state) => ({
-        ...state,
-        clients: clientsData,
-        clientsPagination: pagination,
-        isLoading: false,
-      }));
+      set({ clients: clientsData, clientsPagination: pagination, isLoading: false });
       return payload;
     } catch (error) {
       const errorMsg = error.response?.data?.error || 'Erreur lors du chargement des clients';
@@ -299,17 +256,11 @@ export const useProductStore = create((set, get) => ({
     }
   },
   addClient: async (clientData) => {
-    try {
-      const response = await clientAPI.create(clientData);
-      const clients = [...get().clients, response.data];
-      set((state) => ({ ...state, clients }));
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    const response = await clientAPI.create(clientData);
+    set({ clients: [...get().clients, response.data] });
+    return response.data;
   },
 
-  // Utilisateurs
   fetchUsers: async () => {
     set({ isLoading: true, error: null });
     try {

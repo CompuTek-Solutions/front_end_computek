@@ -10,7 +10,6 @@ const api = axios.create({
   },
 });
 
-// Intercepteur pour ajouter le token JWT
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -19,12 +18,10 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Intercepteur pour gérer les erreurs
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Ne pas rediriger si c'est la requête de connexion qui a échoué
       const isLoginRequest = error.config?.url?.includes('/auth/login');
       if (!isLoginRequest) {
         useAuthStore.getState().logout();
@@ -35,32 +32,28 @@ api.interceptors.response.use(
   }
 );
 
-// Auth
 export const authAPI = {
   login: (email, password) => api.post('/auth/login', { email, password }),
   getProfile: () => api.get('/auth/profile'),
   updateProfile: (data) => api.put('/auth/profile', data),
 };
 
-// Products
 export const productAPI = {
   getAll: (params = {}) => api.get('/products', { params }),
-  getByBarcode: (barcode) => api.get(`/products/barcode/${barcode}`),
+  getById: (id) => api.get(`/products/${id}`),
+  getByBarcode: (barcode) => api.get(`/products/barcode/${encodeURIComponent(barcode)}`),
   create: (data) => api.post('/products', data),
   update: (id, data) => api.put(`/products/${id}`, data),
   delete: (id) => api.delete(`/products/${id}`),
   getCategories: () => api.get('/products/categories'),
 };
 
-// Inventory
 export const inventoryAPI = {
   getAll: () => api.get('/inventory'),
   getLowStock: (threshold = 10) => api.get('/inventory/low-stock', { params: { threshold } }),
   update: (data) => api.put('/inventory', data),
-  adjust: (data) => api.put('/inventory/adjust', data),
 };
 
-// Sales
 export const salesAPI = {
   create: (data) => api.post('/sales', data),
   getAll: (params = {}) => api.get('/sales', { params }),
@@ -70,7 +63,6 @@ export const salesAPI = {
   getSellerStats: (seller_id) => api.get('/sales/stats/seller', { params: { seller_id } }),
 };
 
-// Users
 export const userAPI = {
   getAll: () => api.get('/users'),
   create: (data) => api.post('/users', data),
@@ -81,7 +73,6 @@ export const userAPI = {
   removeAssignment: (id) => api.delete(`/users/assignments/${id}`),
 };
 
-// Clients
 export const clientAPI = {
   getAll: (params = {}) => api.get('/clients', { params }),
   getById: (id) => api.get(`/clients/${id}`),

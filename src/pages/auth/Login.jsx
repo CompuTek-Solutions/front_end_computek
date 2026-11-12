@@ -8,25 +8,17 @@ export default function Login() {
   const login = useAuthStore((state) => state.login);
   const isLoading = useAuthStore((state) => state.isLoading);
 
-  const [email, setEmail] = useState('demo@computek.com');
-  const [password, setPassword] = useState('demo');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const result = await login(email, password);
+    const result = await login(email.trim(), password);
     if (result.success) {
-      toast.success('Connexion réussie!');
-      // Récupérer l'utilisateur depuis le store après la mise à jour
-      setTimeout(() => {
-        const user = useAuthStore.getState().user;
-        if (user?.role === 'admin') {
-          navigate('/admin');
-        } else if (user?.role === 'seller') {
-          navigate('/seller');
-        }
-      }, 100);
+      const user = useAuthStore.getState().user;
+      navigate(user?.role === 'admin' ? '/admin' : '/seller');
     } else {
       toast.error(result.error || 'Erreur de connexion');
     }
@@ -35,21 +27,16 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-600 via-primary-700 to-dark-800 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Card */}
         <div className="bg-white rounded-2xl shadow-2xl p-8">
-          {/* Logo */}
           <div className="text-center mb-8">
             <div className="relative w-24 h-24 mx-auto mb-4">
               <div className="relative w-full h-full border border-white/60 overflow-hidden bg-white/95 backdrop-blur">
                 <img src="/logo.jpg" alt="CompuTek Solutions" className="w-full h-full object-contain p-2" />
               </div>
             </div>
-            {/* <h1 className="text-4xl font-bold text-dark-900 mb-1">CompuTek Solutions</h1> */}
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email or Username */}
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-dark-900 mb-2">
                 Email ou Nom d'utilisateur
@@ -57,6 +44,8 @@ export default function Login() {
               <input
                 id="email"
                 type="text"
+                autoComplete="username"
+                value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-primary-500 transition-colors bg-white text-dark-900 placeholder-gray-500"
                 placeholder="votre@email.com ou votre_nom"
@@ -64,7 +53,6 @@ export default function Login() {
               />
             </div>
 
-            {/* Password */}
             <div>
               <label htmlFor="password" className="block text-sm font-semibold text-dark-900 mb-2">
                 Mot de passe
@@ -73,6 +61,8 @@ export default function Login() {
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-primary-500 transition-colors bg-white text-dark-900 placeholder-gray-500"
                   placeholder="••••••••"
@@ -81,6 +71,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-700 hover:text-dark-900 font-bold"
                 >
                   {showPassword ? '👁️' : '👁️‍🗨️'}
@@ -88,7 +79,6 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}

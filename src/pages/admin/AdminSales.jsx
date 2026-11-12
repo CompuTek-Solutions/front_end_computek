@@ -72,20 +72,17 @@ export default function AdminSales() {
       const { data } = await salesAPI.getById(saleId);
       const payload = data.sale ? { ...data.sale, items: data.items || [] } : { ...data, items: data.items || [] };
       printInvoice(payload);
-    } catch (err) {
+    } catch {
       toast.error('Impossible de charger les détails de la vente');
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-dark-900">Historique des Ventes</h1>
-        <p className="text-dark-600 mt-1">Suivi complet des transactions</p>
       </div>
 
-      {/* Search and Filters */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -128,7 +125,6 @@ export default function AdminSales() {
         </div>
       </div>
 
-      {/* Sales Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           {filteredSales.length === 0 ? (

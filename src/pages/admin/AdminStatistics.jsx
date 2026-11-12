@@ -53,15 +53,11 @@ export default function AdminStatistics() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-dark-900">Statistiques et Rapports</h1>
-        <p className="text-dark-600 mt-1">Vue d'ensemble de vos performances commerciales</p>
       </div>
 
-      {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Revenue Card */}
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200 p-6">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium text-dark-600">Chiffre d'affaires</h3>
@@ -71,17 +67,14 @@ export default function AdminStatistics() {
           <p className="text-xs text-blue-600 mt-2">Total de tous les temps</p>
         </div>
 
-        {/* Orders Card */}
         <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200 p-6">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium text-dark-600">Nombre de ventes</h3>
             <span className="text-2xl">🛒</span>
           </div>
           <p className="text-3xl font-bold text-green-600">{stats.totalOrders}</p>
-          <p className="text-xs text-green-600 mt-2">Transactions complétées</p>
         </div>
 
-        {/* Items Sold Card */}
         <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200 p-6">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium text-dark-600">Articles vendus</h3>
@@ -91,7 +84,6 @@ export default function AdminStatistics() {
           <p className="text-xs text-purple-600 mt-2">Total d'unités</p>
         </div>
 
-        {/* Average Order Card */}
         <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border border-orange-200 p-6">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium text-dark-600">Panier moyen</h3>
@@ -102,9 +94,7 @@ export default function AdminStatistics() {
         </div>
       </div>
 
-      {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Monthly Sales Chart */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-dark-900 mb-4">Ventes Mensuelles</h3>
           {monthlyData.length > 0 ? (
@@ -139,7 +129,6 @@ export default function AdminStatistics() {
           )}
         </div>
 
-        {/* Category Distribution Chart */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-dark-900 mb-4">Répartition par Catégorie</h3>
           {categoryData.length > 0 ? (
@@ -173,7 +162,6 @@ export default function AdminStatistics() {
         </div>
       </div>
 
-      {/* Top Products Chart */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-dark-900 mb-4">Top 10 Produits les Plus Vendus</h3>
         {topProducts.length > 0 ? (
@@ -196,7 +184,6 @@ export default function AdminStatistics() {
         )}
       </div>
 
-      {/* Summary Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="p-6 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-dark-900">Résumé des Ventes</h3>

@@ -1,61 +1,22 @@
-/**
- * Normalize text by removing accents for accent-insensitive search
- * @param {string} str - The string to normalize
- * @returns {string} - Normalized string
- */
 export const normalizeForSearch = (str) => {
   if (!str) return '';
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 };
 
+export const getProductCodes = (product) => {
+  if (Array.isArray(product?.barcodes) && product.barcodes.length > 0) return product.barcodes;
+  return product?.barcode ? [product.barcode] : [];
+};
+
+export const productMatchesSearch = (product, normalizedTerm) =>
+  normalizeForSearch(product.name).includes(normalizedTerm) ||
+  getProductCodes(product).some((code) => normalizeForSearch(code).includes(normalizedTerm));
+
 export const formatCurrency = (amount) => {
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
     currency: 'XAF',
-  }).format(amount);
-};
-
-export const calculateTotalSales = (sales) => {
-  return sales.reduce((total, sale) => total + (sale.total_amount ?? sale.total ?? 0), 0);
-};
-   
-export const calculateTotalQuantity = (sales) => {
-  return sales.reduce((total, sale) => {
-    const items = Array.isArray(sale.items) ? sale.items : [];
-    return total + items.reduce((sum, item) => sum + (item.quantity || 0), 0);
-  }, 0);
-};
-
-export const getTopSellingProducts = (sales, limit = 5) => {
-  const productMap = new Map();
-
-  sales.forEach((sale) => {
-    const items = Array.isArray(sale.items) ? sale.items : [];
-    items.forEach((item) => {
-      const key = item.productId ?? item.product_id;
-      const name = item.name ?? item.product_name;
-      const revenue = item.total ?? item.subtotal ?? 0;
-      if (productMap.has(key)) {
-        const existing = productMap.get(key);
-        productMap.set(key, {
-          ...existing,
-          quantity: existing.quantity + (item.quantity || 0),
-          revenue: existing.revenue + revenue,
-        });
-      } else {
-        productMap.set(key, {
-          productId: key,
-          name,
-          quantity: item.quantity || 0,
-          revenue,
-        });
-      }
-    });
-  });
-
-  return Array.from(productMap.values())
-    .sort((a, b) => b.quantity - a.quantity)
-    .slice(0, limit);
+  }).format(Number(amount) || 0);
 };
 
 export const generateInvoiceNumber = () => {
@@ -97,8 +58,6 @@ export const printInvoice = (sale) => {
   const paymentLabels = { cash: 'Espèces', card: 'Carte bancaire', transfer: 'Virement', check: 'Chèque', paiement_marchand: 'Paiement marchand' };
   const paymentLabel = paymentLabels[sale.payment_method] || sale.payment_method || '—';
 
-  // ✅ FIX : fusion des deux sources (sale.client et sale.client_xxx)
-  // Avant, si sale.client existait mais était vide {}, les champs plats étaient ignorés.
   const clientSource = {
     name: sale.client?.name || sale.client_name,
     email: sale.client?.email || sale.client_email,
@@ -290,17 +249,4 @@ export const printInvoice = (sale) => {
     w.document.write(html);
     w.document.close();
   }
-};
-
-export const calculateStats = (sales) => {
-  const totalRevenue = calculateTotalSales(sales);
-  const totalQuantity = calculateTotalQuantity(sales);
-  const averageOrder = sales.length > 0 ? totalRevenue / sales.length : 0;
-
-  return {
-    totalRevenue,
-    totalQuantity,
-    averageOrder,
-    totalOrders: sales.length,
-  };
 };

@@ -33,7 +33,6 @@ export default function Header({ title, onToggleSidebar }) {
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 px-3 sm:px-6 py-3 sm:py-4 flex-shrink-0">
       <div className="flex items-center justify-between gap-2">
-        {/* Left: hamburger (mobile) + logo + title */}
         <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <button
             onClick={onToggleSidebar}
@@ -55,7 +54,6 @@ export default function Header({ title, onToggleSidebar }) {
           </div>
         </div>
 
-        {/* Right: user info + logout */}
         <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
           <div className="text-right hidden sm:block">
             <p className="font-semibold text-dark-900 text-sm sm:text-base">{displayName}</p>

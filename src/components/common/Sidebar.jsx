@@ -9,12 +9,11 @@ export default function Sidebar({ role, isOpen, onClose }) {
     { name: 'Tableau de bord', path: '/admin', icon: '📊' },
     { name: 'Produits', path: '/admin/products', icon: '📦' },
     { name: 'Inventaire', path: '/admin/inventory', icon: '📋' },
-    // { name: 'Ventes', path: '/admin/sales', icon: '🛒' },
     { name: 'Factures', path: '/admin/invoices', icon: '🧾' },
     { name: 'Clients', path: '/admin/clients', icon: '👤' },
     { name: 'Statistiques', path: '/admin/statistics', icon: '📈' },
     { name: 'Utilisateurs', path: '/admin/users', icon: '👥' },
-    // { name: 'Paramètres', path: '/admin/settings', icon: '⚙️' },
+    { name: 'Mon compte', path: '/admin/settings', icon: '⚙️' },
   ];
 
   const sellerMenus = [
@@ -22,7 +21,8 @@ export default function Sidebar({ role, isOpen, onClose }) {
     { name: 'Nouvelle vente', path: '/seller/new-sale', icon: '💳' },
     { name: 'Historique', path: '/seller/sales-history', icon: '📜' },
     { name: 'Mes factures', path: '/seller/invoices', icon: '🧾' },
-    { name: 'Mes performances', path: '/seller/performance', icon: '📊' },
+    { name: 'Mes performances', path: '/seller/performance', icon: '📈' },
+    { name: 'Mon compte', path: '/seller/settings', icon: '⚙️' },
   ];
 
   const menus = role === 'admin' ? adminMenus : sellerMenus;
@@ -42,7 +42,6 @@ export default function Sidebar({ role, isOpen, onClose }) {
         ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}
     >
-      {/* Logo + Close button on mobile */}
       <div className="flex-shrink-0 p-4 border-b border-gray-100 bg-gradient-to-r from-primary-50 to-transparent">
         <div className="flex items-center justify-between">
           <div className="flex items-center min-w-0">
@@ -58,7 +57,6 @@ export default function Sidebar({ role, isOpen, onClose }) {
         </div>
       </div>
 
-      {/* Navigation - scrollable */}
       <nav className="flex-1 min-h-0 overflow-y-auto py-3 px-2 space-y-1">
         {menus.map((menu) => {
           const isActive = location.pathname === menu.path;
@@ -79,18 +77,6 @@ export default function Sidebar({ role, isOpen, onClose }) {
         })}
       </nav>
 
-      {/* Footer - fixe en bas, ne déborde pas */}
-      <div className="flex-shrink-0 p-3 border-t border-gray-200">
-        <div className="bg-gray-100 rounded-lg p-3 border border-gray-200">
-          <div className="flex items-center space-x-2">
-            <span className="text-lg flex-shrink-0">💡</span>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-dark-900">Besoin d&apos;aide ?</p>
-              <p className="text-xs text-dark-600">Contactez le support</p>
-            </div>
-          </div>
-        </div>
-      </div>
     </aside>
   );
 }

@@ -52,20 +52,17 @@ export default function SellerSalesHistory() {
       const { data } = await salesAPI.getById(saleId);
       const payload = data.sale ? { ...data.sale, items: data.items || [] } : { ...data, items: data.items || [] };
       printInvoice(payload);
-    } catch (err) {
+    } catch {
       toast.error('Impossible de charger les détails de la vente');
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-dark-900">Historique de Mes Ventes</h1>
-        <p className="text-dark-600 mt-1">Suivi détaillé de vos performances commerciales</p>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
@@ -104,7 +101,6 @@ export default function SellerSalesHistory() {
         </div>
       </div>
 
-      {/* Sales Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           {isLoading && sales.length === 0 ? (
@@ -113,7 +109,6 @@ export default function SellerSalesHistory() {
             <div className="py-12 text-center">
               <span className="text-4xl">📝</span>
               <p className="text-dark-500 mt-2">Aucune vente enregistrée</p>
-              <p className="text-dark-400 text-sm mt-1">Vos ventes apparaîtront ici</p>
             </div>
           ) : (
             <table className="w-full">
@@ -219,7 +214,6 @@ export default function SellerSalesHistory() {
         </div>
       </div>
 
-      {/* Summary */}
       {totalCount > 0 && (
         <div className="bg-gradient-to-r from-primary-50 to-blue-50 rounded-xl border border-primary-200 p-6">
           <h3 className="text-lg font-semibold text-dark-900 mb-4">Résumé de performance</h3>
