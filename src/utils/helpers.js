@@ -143,10 +143,23 @@ export const printInvoice = (sale) => {
     .totals-table .label { background: #f1f5f9; }
     .totals-table .grand-total { background: #1d4ed8; color: #fff; font-size: 15px; }
     .payment { margin: 14px 0; border-top: 1px dashed #475569; padding-top: 10px; }
-    .signature { display: flex; justify-content: space-between; margin-top: 32px; padding-bottom: 130px; font-weight: 600; }
-    footer { margin-top: auto; break-inside: avoid; border: 1px solid #94a3b8; padding: 16px; font-size: 12px; line-height: 1.5; text-align: center; }
+    .closing { margin-top: auto; padding-top: 24px; break-inside: avoid; }
+    .signature { display: flex; justify-content: space-between; font-weight: 600; min-height: 90px; }
+    footer { border: 1px solid #94a3b8; padding: 16px; font-size: 12px; line-height: 1.5; text-align: center; }
     @media print {
-      .invoice { padding: 0; min-height: 277mm; }
+      .invoice { padding: 0; min-height: 250mm; }
+      .invoice-header { padding-bottom: 8px; }
+      .invoice-meta { margin: 10px 0; }
+      .invoice-meta div { padding: 6px 12px; }
+      table { margin: 8px 0 4px; }
+      th { padding: 5px 8px; }
+      tbody td { padding-top: 4px !important; padding-bottom: 4px !important; }
+      .totals-table td { padding: 4px 10px; }
+      .payment { margin: 8px 0; padding-top: 6px; }
+      .payment p { margin: 2px 0; }
+      .closing { padding-top: 12px; }
+      .signature { min-height: 80px; }
+      footer { padding: 6px 12px; font-size: 11px; line-height: 1.35; }
     }
   </style>
 </head>
@@ -231,6 +244,7 @@ export const printInvoice = (sale) => {
       ${sale.notes ? `<p><strong>Notes :</strong> ${sale.notes}</p>` : ''}
     </div>
 
+    <div class="closing">
     <div class="signature">
       <div>Le Client</div>
       <div>Le Service Commercial</div>
@@ -243,6 +257,7 @@ export const printInvoice = (sale) => {
       <div><strong>Email:</strong> infos@computeksolutions.cm / contact@computeksolutions.cm</div>
       <div><strong>Site web:</strong> www.computeksolutions.cm &nbsp;&nbsp; <strong>Tél:</strong> 657300520 / 653254806</div>
     </footer>
+    </div>
   </div>
   <script>window.onload = function() { window.print(); };</script>
 </body>
